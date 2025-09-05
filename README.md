@@ -75,12 +75,8 @@
 ### 📅 WBS
 👉🏻 [바로가기](https://docs.google.com/spreadsheets/d/e/2PACX-1vRNmWdnV2qvOL-9PIGcX0lRT1LHVXQsyksHRUPIMlxKmZFdqw4OTyg1zX3C6WjHVtbeMd60BnfcLQFG/pubhtml?gid=509945759&single=true)
 
-<iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRNmWdnV2qvOL-9PIGcX0lRT1LHVXQsyksHRUPIMlxKmZFdqw4OTyg1zX3C6WjHVtbeMd60BnfcLQFG/pubhtml?gid=509945759&range=B1:FF34&single=true" width="100%" height="400"></iframe>
-
 ### 📱 피그마
 👉🏻 [바로가기](https://www.figma.com/design/n739zPv5T6kmol53qErEtC/%ED%92%80%EC%8A%A4%ED%83%9D%EC%84%9C%EB%B9%84%EC%8A%A4%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D?node-id=0-1&t=Dnr0GjPLAzKs9mMJ-1)
-
-<iframe src="https://www.figma.com/design/n739zPv5T6kmol53qErEtC/%ED%92%80%EC%8A%A4%ED%83%9D%EC%84%9C%EB%B9%84%EC%8A%A4%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D?node-id=0-1&t=Dnr0GjPLAzKs9mMJ-1" width="100%" height="400"></iframe>
 
 ### 📝 커밋 규칙
 - `type(타입): title(제목)`
