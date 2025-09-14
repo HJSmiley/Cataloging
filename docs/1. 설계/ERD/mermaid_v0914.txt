@@ -1,0 +1,158 @@
+erDiagram
+  %% Authentication and profile
+  User ||--|| UserMeta : has_profile
+  User ||--o{ OAuthAccount : linked_with
+  OAuthProvider ||--o{ OAuthAccount : provides
+
+  %% Catalog and items
+  User ||--o{ Catalog : owns
+  Catalog ||--o{ Item : contains
+
+  %% Collection ownership and media
+  User ||--o{ Ownership : has
+  Item  ||--o{ Ownership : is_owned
+  Item  ||--o{ Media : has
+
+  %% Taxonomy and tags
+  Item  }o--|| Category : belongs_to
+  Item  }o--o{ Tag : tagged_by
+  Item  ||--o{ ItemTag : has
+  Tag   ||--o{ ItemTag : maps
+
+  %% Social save/bookmark
+  User   ||--o{ UserSavedCatalog : saves
+  Catalog||--o{ UserSavedCatalog : saved_by
+
+  %% User: 인증 주체(소셜 로그인만 사용)
+  User {
+    uuid id
+    string email
+    string nickname
+    string avatar_url
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% UserMeta: 프로필/환경설정(1:1)
+  %% locale: 표시 언어/지역(예: ko-KR)
+  %% timezone: 시간대(예: Asia/Seoul)
+  %% storage_location_default: 신규 아이템 기본 보관 위치
+  UserMeta {
+    uuid id
+    uuid user_id
+    string locale
+    string timezone
+    bool marketing_opt_in
+    string storage_location_default
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% OAuthProvider/OAuthAccount: 소셜 계정 연결(1:N)
+  OAuthProvider {
+    string id
+    string name
+  }
+
+  %% email_normalized: 소문자/트리밍 등 정규화된 이메일
+  OAuthAccount {
+    uuid id
+    uuid user_id
+    string provider_id
+    string provider_user_id
+    string email_normalized
+    string display_name
+    string avatar_url
+    datetime linked_at
+  }
+
+  %% Catalog: 개인 카탈로그
+  %% category_default_id: 아이템 생성 시 기본 카테고리 프리필
+  Catalog {
+    uuid id
+    uuid user_id
+    string title
+    string description
+    string visibility
+    uuid category_default_id
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% UserSavedCatalog: 즐겨찾기/보관
+  %% is_pinned: 상단 고정, label: 개인 라벨/폴더, notify: 변경 알림 opt-in
+  UserSavedCatalog {
+    uuid id
+    uuid user_id
+    uuid catalog_id
+    bool is_pinned
+    string label
+    bool notify
+    datetime created_at
+  }
+
+  %% Category/Tag: 탐색용 분류/태그(슬러그는 URL/탐색용 고유키)
+  Category {
+    uuid id
+    string name
+    string category_slug
+    datetime created_at
+  }
+
+  Tag {
+    uuid id
+    string name
+    string tag_slug
+    datetime created_at
+  }
+
+  ItemTag {
+    uuid item_id
+    uuid tag_id
+  }
+
+  %% Item: 공통 필드 + 가변 속성(JSON)
+  %% attributes: brand/numbering/rarity 등 유형별 필드를 JSON으로 보관
+  Item {
+    uuid id
+    uuid catalog_id
+    string name
+    string description
+    date   release_date
+    string currency
+    uuid category_id
+    json   attributes
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% Ownership: 사용자-아이템 관계(보유 상태)
+  %% condition: 상태(예: sealed/opened/used), storage_location: 실제 보관 위치
+  Ownership {
+    uuid id
+    uuid user_id
+    uuid item_id
+    bool owned
+    int  quantity
+    string condition
+    date   acquired_at
+    decimal purchase_price
+    string currency
+    string storage_location
+    string note
+    datetime created_at
+    datetime updated_at
+  }
+
+  %% Media: 오브젝트 스토리지 참조
+  %% storage_key: S3 등 내부 객체 키(서명 URL과 분리된 안정 ID)
+  Media {
+    uuid id
+    uuid item_id
+    string url
+    string storage_key
+    string media_type
+    int    size_bytes
+    bool   is_primary
+    datetime created_at
+  }
