@@ -1,16 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:fe/presentation/add/add_item.dart/';
+import 'package:provider/provider.dart';
+import 'providers/catalog_provider.dart';
+import 'providers/item_provider.dart';
+import 'screens/home_screen.dart';
 
-main() => runApp(MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      // 전역 테마에서 강제 배경색을 지정하지 않고, 화면 구성으로 제어
-      home: AddItemPage(), // 아이템 추가 페이지로 이동
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CatalogProvider()),
+        ChangeNotifierProvider(create: (_) => ItemProvider()),
+      ],
+      child: MaterialApp(
+        title: '카탈로깅',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
+        ),
+        home: const HomeScreen(),
+      ),
     );
   }
 }
