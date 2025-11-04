@@ -58,3 +58,17 @@ htmlcov/
 
 # 업로드된 파일
 uploads/
+
+# FastAPI 관련
+.pytest_cache/
+.mypy_cache/
+
+# 임시 파일
+*.tmp
+*.temp
+*.bak
+
+# 압축 파일
+*.zip
+*.tar.gz
+*.rar
