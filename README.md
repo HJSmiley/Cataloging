@@ -36,7 +36,9 @@
 ✅ **컬렉션 생성 & 관리**: 사용자가 직접 컬렉션을 만들고 아이템을 추가, 사진 업로드도 가능<br>
 ✅ **아이템 목록 관리**: 컬렉션에 추가된 아이템 이름과 넘버링 입력 후 보유 여부 체크 가능<br>
 ✅ **수집률 표시**: 보유한 아이템 비율로 수집 진행 상황 파악<br>
-✅ **사용자 계정 및 로그인**: 기본적인 회원가입 및 로그인 기능
+✅ **사용자 계정 및 로그인**: JWT 기반 인증, 프로필 관리, OAuth2 준비<br>
+✅ **마이크로서비스 아키텍처**: Spring Boot + FastAPI + Flutter 통합<br>
+✅ **실시간 통신 로깅**: 모든 API 요청/응답 상세 추적
 
 ### 추후 개발(제외 기능)
 🚫 컬렉션/아이템 검색 기능<br>
@@ -49,26 +51,116 @@
 ## ⚒️ 개발 문서
 
 ### 🏗️ 아키텍처
+👉🏻 [시스템 아키텍처 문서](docs/system-architecture.md)
 
-### 💿 ERD
+**마이크로서비스 아키텍처**
+- **Flutter 클라이언트** (포트 3000): 웹 기반 사용자 인터페이스
+- **Spring Boot 회원 API** (포트 8081): JWT 인증, 사용자 관리, OAuth2 로그인
+- **FastAPI 카탈로그 API** (포트 8000): 카탈로그/아이템 CRUD, 이미지 업로드
+
+**JWT 토큰 기반 통합 인증**
+- Spring Boot에서 JWT 토큰 발급
+- FastAPI에서 동일한 시크릿 키로 토큰 검증
+- 사용자별 데이터 완전 격리
+
+### 📊 통신 로깅
+👉🏻 [통신 로깅 시스템](docs/communication-logging.md)
+
+모든 클라이언트-서버 간 통신을 실시간으로 로깅:
+- Flutter: `developer.log`로 API 요청/응답 추적
+- Spring Boot: 인증 관련 상세 로깅
+- FastAPI: API_COMMUNICATION 로거로 모든 요청 기록
+
+### 🧪 통합 테스트
+👉🏻 [통합 테스트 가이드](docs/integration-testing-guide.md)
+
+전체 시스템 통합 테스트 시나리오:
+- 사용자 등록 및 JWT 토큰 발급
+- 토큰 기반 카탈로그/아이템 CRUD
+- 에러 시나리오 및 성능 테스트
 
 ### 📂 디렉토리 구조
 
 <details>
-<summary>Front-End</summary>
+<summary>Front-End (Flutter)</summary>
+
+```
+fe/
+├── lib/
+│   ├── main.dart                 # 앱 진입점, AuthWrapper
+│   ├── models/                   # 데이터 모델
+│   │   ├── user.dart            # 사용자 모델 (JWT 연동)
+│   │   ├── catalog.dart         # 카탈로그 모델
+│   │   └── item.dart            # 아이템 모델
+│   ├── services/                # API 통신
+│   │   ├── auth_service.dart    # 회원 API 연동 (JWT)
+│   │   └── api_service.dart     # 카탈로그 API 연동
+│   ├── providers/               # 상태 관리
+│   │   ├── auth_provider.dart   # 인증 상태 관리
+│   │   ├── catalog_provider.dart
+│   │   └── item_provider.dart
+│   └── screens/                 # UI 화면
+│       ├── login_screen.dart    # 로그인 화면
+│       ├── profile_screen.dart  # 프로필 관리
+│       ├── home_screen.dart     # 홈 화면
+│       └── ...
+└── pubspec.yaml                 # Flutter 의존성
+```
 
 </details>
 
 <details>
 <summary>Back-End</summary>
 
+```
+be/
+├── user-api/                    # Spring Boot 회원 API
+│   ├── src/main/java/com/cataloging/userapi/
+│   │   ├── UserApiApplication.java
+│   │   ├── config/              # Security, CORS 설정
+│   │   ├── controller/          # REST API 컨트롤러
+│   │   ├── dto/                 # 데이터 전송 객체
+│   │   ├── entity/              # JPA 엔티티
+│   │   ├── repository/          # 데이터 접근 계층
+│   │   ├── security/            # JWT, OAuth2 보안
+│   │   └── service/             # 비즈니스 로직
+│   ├── src/main/resources/
+│   │   └── application.yml      # 설정 파일
+│   └── build.gradle             # Gradle 빌드 설정
+│
+└── catalog-api/                 # FastAPI 카탈로그 API
+    ├── main.py                  # FastAPI 앱 진입점
+    ├── app/
+    │   ├── config.py            # JWT 설정 (Spring Boot와 동일)
+    │   ├── database.py          # SQLite 연결
+    │   ├── models.py            # Pydantic 모델
+    │   ├── utils.py             # JWT 검증 유틸리티
+    │   └── routers/             # API 라우터
+    │       ├── catalogs.py      # 카탈로그 CRUD
+    │       ├── items.py         # 아이템 CRUD
+    │       └── upload.py        # 파일 업로드
+    ├── requirements.txt         # Python 의존성
+    └── Dockerfile               # Docker 설정
+```
+
 </details>
 
 ### ☁️ 배포 환경
 
+**현재 (로컬 개발)**
 ```
-- 서버(WAS) : -
-- 데이터베이스 : -
+- Flutter 클라이언트: http://localhost:3000 (웹 서버)
+- Spring Boot API: http://localhost:8081 (Gradle)
+- FastAPI: http://localhost:8000 (Docker)
+- 데이터베이스: H2 (Spring Boot), SQLite (FastAPI)
+```
+
+**향후 (프로덕션)**
+```
+- 클라이언트: AWS S3 + CloudFront (정적 웹 호스팅)
+- API 서버: AWS EC2 + ALB (로드 밸런서)
+- 데이터베이스: AWS RDS (Spring Boot), DynamoDB (FastAPI)
+- 이미지 저장: AWS S3
 ```
 
 ### 📅 WBS

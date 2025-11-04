@@ -56,16 +56,26 @@ def create_access_token(user_id: str) -> str:
 def verify_token(token: str) -> str:
     """JWT 토큰 검증 및 사용자 ID 반환"""
     try:
+        # 디버깅을 위한 로그 추가
+        print(f"🔍 토큰 검증 시도: {token[:50]}...")
+        print(f"🔑 사용 중인 시크릿: {settings.JWT_SECRET_KEY[:20]}...")
+        print(f"🔧 알고리즘: {settings.JWT_ALGORITHM}")
+        
         payload = jwt.decode(
             token, 
             settings.JWT_SECRET_KEY, 
             algorithms=[settings.JWT_ALGORITHM]
         )
+        
+        print(f"✅ 토큰 디코딩 성공: {payload}")
+        
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
         return user_id
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as e:
+        print(f"❌ 토큰 만료: {e}")
         raise HTTPException(status_code=401, detail="토큰이 만료되었습니다")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="토큰 검증에 실패했습니다")
+    except jwt.PyJWTError as e:
+        print(f"❌ JWT 오류: {e}")
+        raise HTTPException(status_code=401, detail=f"토큰 검증에 실패했습니다: {str(e)}")

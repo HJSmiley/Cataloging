@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import '../models/catalog.dart';
 import '../models/item.dart';
+import 'auth_service.dart';
 
 class ApiLogger {
   static void logRequest(
@@ -10,10 +12,10 @@ class ApiLogger {
     Map<String, String> headers, [
     String? body,
   ]) {
-    print('🔵 CLIENT REQUEST: $method $url');
-    print('   Headers: $headers');
+    developer.log('🔵 CLIENT REQUEST: $method $url', name: 'ApiService');
+    developer.log('   Headers: $headers', name: 'ApiService');
     if (body != null) {
-      print('   Body: $body');
+      developer.log('   Body: $body', name: 'ApiService');
     }
   }
 
@@ -23,34 +25,41 @@ class ApiLogger {
     String responseBody, [
     Duration? duration,
   ]) {
-    print(
+    developer.log(
       '🔴 CLIENT RESPONSE: $statusCode $url ${duration != null ? '(${duration.inMilliseconds}ms)' : ''}',
+      name: 'ApiService',
     );
     if (responseBody.isNotEmpty) {
       try {
         final jsonData = json.decode(responseBody);
         final prettyJson = JsonEncoder.withIndent('  ').convert(jsonData);
-        print('   Response: $prettyJson');
+        developer.log('   Response: $prettyJson', name: 'ApiService');
       } catch (e) {
-        print('   Response: $responseBody');
+        developer.log('   Response: $responseBody', name: 'ApiService');
       }
     }
   }
 
   static void logError(String method, String url, dynamic error) {
-    print('❌ CLIENT ERROR: $method $url');
-    print('   Error: $error');
+    developer.log('❌ CLIENT ERROR: $method $url', name: 'ApiService');
+    developer.log('   Error: $error', name: 'ApiService');
   }
 }
 
 class ApiService {
   static const String baseUrl = 'http://localhost:8000/api';
-  static const String userId = 'flutter-user-1'; // 개발용 임시 사용자 ID
+  static final AuthService _authService = AuthService();
 
-  static Map<String, String> get headers => {
-    'Content-Type': 'application/json',
-    'Authorization': userId,
-  };
+  static Future<Map<String, String>> get headers async {
+    final token = await _authService.getToken();
+    final baseHeaders = {'Content-Type': 'application/json'};
+
+    if (token != null) {
+      baseHeaders['Authorization'] = 'Bearer $token';
+    }
+
+    return baseHeaders;
+  }
 
   // 카탈로그 관련 API
   static Future<List<Catalog>> getCatalogs() async {
@@ -58,9 +67,10 @@ class ApiService {
     final stopwatch = Stopwatch()..start();
 
     try {
-      ApiLogger.logRequest('GET', url, headers);
+      final requestHeaders = await headers;
+      ApiLogger.logRequest('GET', url, requestHeaders);
 
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http.get(Uri.parse(url), headers: requestHeaders);
 
       stopwatch.stop();
       ApiLogger.logResponse(
@@ -73,6 +83,9 @@ class ApiService {
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
         return jsonList.map((json) => Catalog.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       } else {
         throw Exception('카탈로그 목록을 불러오는데 실패했습니다: ${response.statusCode}');
       }
@@ -84,13 +97,17 @@ class ApiService {
 
   static Future<Catalog> getCatalog(String catalogId) async {
     try {
+      final requestHeaders = await headers;
       final response = await http.get(
         Uri.parse('$baseUrl/catalogs/$catalogId'),
-        headers: headers,
+        headers: requestHeaders,
       );
 
       if (response.statusCode == 200) {
         return Catalog.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       } else {
         throw Exception('카탈로그를 불러오는데 실패했습니다: ${response.statusCode}');
       }
@@ -105,11 +122,12 @@ class ApiService {
     final stopwatch = Stopwatch()..start();
 
     try {
-      ApiLogger.logRequest('POST', url, headers, body);
+      final requestHeaders = await headers;
+      ApiLogger.logRequest('POST', url, requestHeaders, body);
 
       final response = await http.post(
         Uri.parse(url),
-        headers: headers,
+        headers: requestHeaders,
         body: body,
       );
 
@@ -123,6 +141,9 @@ class ApiService {
 
       if (response.statusCode == 201) {
         return Catalog.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       } else {
         throw Exception('카탈로그 생성에 실패했습니다: ${response.statusCode}');
       }
@@ -134,12 +155,16 @@ class ApiService {
 
   static Future<void> deleteCatalog(String catalogId) async {
     try {
+      final requestHeaders = await headers;
       final response = await http.delete(
         Uri.parse('$baseUrl/catalogs/$catalogId'),
-        headers: headers,
+        headers: requestHeaders,
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
+      } else if (response.statusCode != 200) {
         throw Exception('카탈로그 삭제에 실패했습니다: ${response.statusCode}');
       }
     } catch (e) {
@@ -150,14 +175,18 @@ class ApiService {
   // 아이템 관련 API
   static Future<List<Item>> getItemsByCatalog(String catalogId) async {
     try {
+      final requestHeaders = await headers;
       final response = await http.get(
         Uri.parse('$baseUrl/items/catalog/$catalogId'),
-        headers: headers,
+        headers: requestHeaders,
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);
         return jsonList.map((json) => Item.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       } else {
         throw Exception('아이템 목록을 불러오는데 실패했습니다: ${response.statusCode}');
       }
@@ -168,14 +197,18 @@ class ApiService {
 
   static Future<Item> createItem(ItemCreate itemCreate) async {
     try {
+      final requestHeaders = await headers;
       final response = await http.post(
         Uri.parse('$baseUrl/items/'),
-        headers: headers,
+        headers: requestHeaders,
         body: json.encode(itemCreate.toJson()),
       );
 
       if (response.statusCode == 201) {
         return Item.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       } else {
         throw Exception('아이템 생성에 실패했습니다: ${response.statusCode}');
       }
@@ -189,9 +222,13 @@ class ApiService {
     final stopwatch = Stopwatch()..start();
 
     try {
-      ApiLogger.logRequest('PATCH', url, headers);
+      final requestHeaders = await headers;
+      ApiLogger.logRequest('PATCH', url, requestHeaders);
 
-      final response = await http.patch(Uri.parse(url), headers: headers);
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: requestHeaders,
+      );
 
       stopwatch.stop();
       ApiLogger.logResponse(
@@ -203,6 +240,9 @@ class ApiService {
 
       if (response.statusCode == 200) {
         return Item.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       } else {
         throw Exception('아이템 보유 상태 변경에 실패했습니다: ${response.statusCode}');
       }
@@ -214,12 +254,16 @@ class ApiService {
 
   static Future<void> deleteItem(String itemId) async {
     try {
+      final requestHeaders = await headers;
       final response = await http.delete(
         Uri.parse('$baseUrl/items/$itemId'),
-        headers: headers,
+        headers: requestHeaders,
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode == 401) {
+        await _authService.clearToken();
+        throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
+      } else if (response.statusCode != 200) {
         throw Exception('아이템 삭제에 실패했습니다: ${response.statusCode}');
       }
     } catch (e) {

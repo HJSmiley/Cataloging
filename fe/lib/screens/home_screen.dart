@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/catalog_provider.dart';
 import '../services/api_service.dart';
 import '../models/catalog.dart';
 import 'catalog_detail_screen.dart';
 import 'create_catalog_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,9 +42,25 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('카탈로깅'),
+        title: const Text('홈'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        automaticallyImplyLeading: false, // 뒤로가기 버튼 제거
         actions: [
+          // 사용자 정보 표시
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              final user = authProvider.user;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Center(
+                  child: Text(
+                    user?.nickname ?? '사용자',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -92,19 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: _isServerConnected
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreateCatalogScreen(),
-                  ),
-                );
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 
@@ -199,7 +204,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: 4,
@@ -210,14 +216,29 @@ class _HomeScreenState extends State<HomeScreen> {
                           : Colors.blue.shade100,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      '${catalog.completionRate.toInt()}%',
-                      style: TextStyle(
-                        color: catalog.completionRate == 100
-                            ? Colors.green.shade800
-                            : Colors.blue.shade800,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          catalog.completionRate == 100
+                              ? Icons.check_circle
+                              : Icons.pie_chart,
+                          size: 14,
+                          color: catalog.completionRate == 100
+                              ? Colors.green.shade800
+                              : Colors.blue.shade800,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${catalog.completionRate.toInt()}%',
+                          style: TextStyle(
+                            color: catalog.completionRate == 100
+                                ? Colors.green.shade800
+                                : Colors.blue.shade800,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
