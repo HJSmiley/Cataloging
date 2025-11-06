@@ -1,36 +1,52 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'user.g.dart';
-
-@JsonSerializable()
 class User {
   final int id;
   final String email;
   final String nickname;
-  final String? introduction;
   final String? profileImage;
+  final String? introduction;
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  const User({
+  
+  User({
     required this.id,
     required this.email,
     required this.nickname,
-    this.introduction,
     this.profileImage,
+    this.introduction,
     required this.createdAt,
     required this.updatedAt,
   });
-
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-  Map<String, dynamic> toJson() => _$UserToJson(this);
-
+  
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] as int,
+      email: json['email'] as String,
+      nickname: json['nickname'] as String,
+      profileImage: json['profileImage'] as String?,
+      introduction: json['introduction'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'nickname': nickname,
+      'profileImage': profileImage,
+      'introduction': introduction,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+  
   User copyWith({
     int? id,
     String? email,
     String? nickname,
-    String? introduction,
     String? profileImage,
+    String? introduction,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -38,46 +54,11 @@ class User {
       id: id ?? this.id,
       email: email ?? this.email,
       nickname: nickname ?? this.nickname,
-      introduction: introduction ?? this.introduction,
       profileImage: profileImage ?? this.profileImage,
+      introduction: introduction ?? this.introduction,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
 
-@JsonSerializable()
-class LoginResponse {
-  final String accessToken;
-  final String tokenType;
-  final int expiresIn;
-  final User user;
-
-  const LoginResponse({
-    required this.accessToken,
-    required this.tokenType,
-    required this.expiresIn,
-    required this.user,
-  });
-
-  factory LoginResponse.fromJson(Map<String, dynamic> json) =>
-      _$LoginResponseFromJson(json);
-  Map<String, dynamic> toJson() => _$LoginResponseToJson(this);
-}
-
-@JsonSerializable()
-class UserUpdateRequest {
-  final String? nickname;
-  final String? introduction;
-  final String? profileImage;
-
-  const UserUpdateRequest({
-    this.nickname,
-    this.introduction,
-    this.profileImage,
-  });
-
-  factory UserUpdateRequest.fromJson(Map<String, dynamic> json) =>
-      _$UserUpdateRequestFromJson(json);
-  Map<String, dynamic> toJson() => _$UserUpdateRequestToJson(this);
-}

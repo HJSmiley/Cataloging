@@ -107,4 +107,29 @@ public class UserService {
         user.setStatus(User.UserStatus.DELETED);
         userRepository.save(user);
     }
+    
+    public User processDevUser(String email, String nickname) {
+        log.debug("개발용 사용자 처리: email={}, nickname={}", email, nickname);
+        
+        // 이메일로 기존 사용자 확인
+        Optional<User> existingUser = userRepository.findByProviderAndProviderId("dev", email);
+        
+        if (existingUser.isPresent()) {
+            // 기존 사용자 정보 업데이트
+            User user = existingUser.get();
+            user.setNickname(nickname);
+            return userRepository.save(user);
+        } else {
+            // 새 사용자 생성
+            User newUser = User.builder()
+                    .provider("dev")
+                    .providerId(email)
+                    .email(email)
+                    .nickname(nickname)
+                    .status(User.UserStatus.ACTIVE)
+                    .build();
+            
+            return userRepository.save(newUser);
+        }
+    }
 }

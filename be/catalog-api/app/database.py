@@ -34,10 +34,40 @@ class ItemDB(Base):
     name = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     image_url = Column(String, nullable=True)
-    owned = Column(Boolean, default=False)
     user_fields = Column(JSON, default=dict)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+class UserCatalogDB(Base):
+    """사용자가 저장한 카탈로그 추적 (중복 저장 방지용)"""
+    __tablename__ = "user_catalogs"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, index=True, nullable=False)
+    original_catalog_id = Column(String, index=True, nullable=False)  # 원본 카탈로그 ID
+    copied_catalog_id = Column(String, index=True, nullable=True)     # 복사본 카탈로그 ID
+    saved_at = Column(DateTime, default=func.now())
+    
+    # 복합 인덱스: 한 사용자가 같은 원본 카탈로그를 중복 저장하지 않도록
+    __table_args__ = (
+        {'sqlite_autoincrement': True}
+    )
+
+class UserItemStatusDB(Base):
+    """사용자별 아이템 보유 상태"""
+    __tablename__ = "user_item_status"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, index=True, nullable=False)
+    item_id = Column(String, index=True, nullable=False)
+    owned = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # 복합 인덱스: 한 사용자의 한 아이템에 대해 하나의 상태만
+    __table_args__ = (
+        {'sqlite_autoincrement': True}
+    )
 
 async def init_db():
     """데이터베이스 테이블 생성"""

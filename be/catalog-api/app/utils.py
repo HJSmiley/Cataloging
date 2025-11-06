@@ -4,40 +4,56 @@ import jwt
 from app.config import settings
 
 async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
-    """JWT 토큰에서 사용자 ID 추출 (임시 구현)"""
+    """JWT 토큰에서 사용자 ID 추출"""
     
-    # 개발 단계에서는 헤더에서 직접 user_id를 받음
-    # 실제 운영에서는 JWT 토큰을 검증해야 함
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
+    print(f"🔍 Authorization 헤더: {authorization}")
+    
+    if not authorization:
+        print("❌ Authorization 헤더가 없음")
+        raise HTTPException(status_code=401, detail="Authorization 헤더가 필요합니다")
+    
+    if not authorization.startswith("Bearer "):
+        print(f"❌ 잘못된 Authorization 형식: {authorization}")
+        raise HTTPException(status_code=401, detail="Bearer 토큰이 필요합니다")
+    
+    token = authorization.split(" ")[1]
+    print(f"🔑 JWT 토큰: {token[:50]}...")
+    
+    # JWT 토큰 검증
+    try:
+        print(f"🔧 JWT 시크릿: {settings.JWT_SECRET_KEY[:20]}...")
+        print(f"🔧 JWT 알고리즘: {settings.JWT_ALGORITHM}")
         
-        # JWT 토큰 검증 (실제 구현)
-        try:
-            payload = jwt.decode(
-                token, 
-                settings.JWT_SECRET_KEY, 
-                algorithms=[settings.JWT_ALGORITHM]
-            )
-            user_id = payload.get("sub")
-            if user_id is None:
-                raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
-            return user_id
-        except jwt.PyJWTError:
-            raise HTTPException(status_code=401, detail="토큰 검증에 실패했습니다")
-    
-    # 개발용 임시 처리: X-User-ID 헤더 사용
-    user_id_header = None
-    if authorization and not authorization.startswith("Bearer "):
-        user_id_header = authorization
-    
-    if user_id_header:
-        return user_id_header
-    
-    # 토큰이 없는 경우
-    raise HTTPException(
-        status_code=401, 
-        detail="인증이 필요합니다. Authorization 헤더에 JWT 토큰 또는 개발용 사용자 ID를 포함해주세요."
-    )
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET_KEY, 
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        
+        print(f"✅ JWT 페이로드: {payload}")
+        
+        user_id = payload.get("sub")
+        if user_id is None:
+            print("❌ JWT에 sub 필드가 없음")
+            raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+        
+        print(f"👤 추출된 사용자 ID: {user_id} (타입: {type(user_id)})")
+        
+        # 사용자 ID를 문자열로 변환
+        user_id_str = str(user_id)
+        print(f"👤 최종 사용자 ID: {user_id_str}")
+        
+        return user_id_str
+        
+    except jwt.ExpiredSignatureError as e:
+        print(f"❌ JWT 토큰 만료: {e}")
+        raise HTTPException(status_code=401, detail="토큰이 만료되었습니다")
+    except jwt.InvalidTokenError as e:
+        print(f"❌ JWT 토큰 무효: {e}")
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다")
+    except Exception as e:
+        print(f"❌ JWT 처리 오류: {e}")
+        raise HTTPException(status_code=401, detail="토큰 처리 중 오류가 발생했습니다")
 
 def create_access_token(user_id: str) -> str:
     """JWT 액세스 토큰 생성"""
@@ -52,6 +68,25 @@ def create_access_token(user_id: str) -> str:
     
     token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return token
+
+async def get_optional_user_id(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    """JWT 토큰에서 사용자 ID 추출 (선택적, 인증 실패 시 None 반환)"""
+    
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        
+        try:
+            payload = jwt.decode(
+                token, 
+                settings.JWT_SECRET_KEY, 
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            user_id = payload.get("sub")
+            return user_id
+        except jwt.PyJWTError:
+            return None
+    
+    return None
 
 def verify_token(token: str) -> str:
     """JWT 토큰 검증 및 사용자 ID 반환"""

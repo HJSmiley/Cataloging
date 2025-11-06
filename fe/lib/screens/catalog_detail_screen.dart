@@ -1,469 +1,600 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/catalog_provider.dart';
-import '../providers/item_provider.dart';
-import '../models/catalog.dart';
+import 'package:get/get.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/catalog_controller.dart';
 import '../models/item.dart';
-import 'create_item_screen.dart';
+import '../services/api_service.dart';
+
 import 'item_detail_screen.dart';
+import 'catalog_edit_screen.dart';
+import 'item_add_screen.dart';
+import 'home_screen.dart';
 
 class CatalogDetailScreen extends StatefulWidget {
-  final Catalog catalog;
+  final String catalogId;
+  final bool isPublic;
 
-  const CatalogDetailScreen({super.key, required this.catalog});
+  const CatalogDetailScreen({
+    super.key,
+    required this.catalogId,
+    this.isPublic = false,
+  });
 
   @override
   State<CatalogDetailScreen> createState() => _CatalogDetailScreenState();
 }
 
 class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
+  bool _isOwnedCatalog = false;
+  bool _isSavedCatalog = false;
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
-    // 화면 진입 시 아이템 목록 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ItemProvider>().loadItems(widget.catalog.catalogId);
+      _loadCatalogAndCheckOwnership();
     });
+  }
+
+  Future<void> _loadCatalogAndCheckOwnership() async {
+    final controller = Get.find<CatalogController>();
+    await controller.loadCatalog(widget.catalogId);
+
+    if (!widget.isPublic) {
+      // 공개 카탈로그가 아닌 경우 소유권 확인
+      final isOwned = await controller.checkCatalogOwnership(widget.catalogId);
+      setState(() {
+        _isOwnedCatalog = isOwned;
+      });
+    } else {
+      // 공개 카탈로그인 경우 실제 소유자인지 확인
+      final authController = Get.find<AuthController>();
+      final currentUserId = authController.user?.id.toString();
+
+      // 저장 상태도 확인
+      final isSaved = await controller.checkCatalogSaved(widget.catalogId);
+      setState(() {
+        _isSavedCatalog = isSaved;
+      });
+      final catalog = controller.currentCatalog;
+
+      if (catalog != null && currentUserId == catalog.userId) {
+        // 자신이 생성한 공개 카탈로그
+        setState(() {
+          _isOwnedCatalog = true;
+        });
+      } else {
+        // 다른 사람이 생성한 공개 카탈로그
+        setState(() {
+          _isOwnedCatalog = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleSaveCatalog() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    final controller = Get.find<CatalogController>();
+    final success = await controller.saveCatalog(widget.catalogId);
+
+    if (mounted) {
+      setState(() {
+        _isSaving = false;
+      });
+
+      if (success) {
+        Get.snackbar('성공', '카탈로그가 저장되었습니다');
+        // 저장 성공 시 현재 화면의 상태를 업데이트
+        setState(() {
+          _isSavedCatalog = true;
+        });
+        // 카탈로그 정보를 다시 로드하여 최신 상태 반영
+        await controller.loadCatalog(widget.catalogId);
+      } else {
+        Get.snackbar('실패', '저장 실패: ${controller.error}',
+            backgroundColor: Colors.red, colorText: Colors.white);
+      }
+    }
+  }
+
+  Future<void> _handleDeleteCatalog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('카탈로그 삭제'),
+        content: const Text('정말로 이 카탈로그를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final controller = Get.find<CatalogController>();
+      final success = await controller.deleteCatalog(widget.catalogId);
+
+      if (mounted) {
+        if (success) {
+          // 삭제 성공 팝업 표시
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('삭제 완료'),
+                ],
+              ),
+              content: const Text('카탈로그가 성공적으로 삭제되었습니다.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          );
+
+          // 홈 페이지로 이동 (모든 이전 화면 제거)
+          Get.offAll(() => const HomeScreen());
+        } else {
+          Get.snackbar('실패', '삭제 실패: ${controller.error}',
+              backgroundColor: Colors.red, colorText: Colors.white);
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.catalog.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<ItemProvider>().loadItems(widget.catalog.catalogId);
-            },
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로가기 시 추가 로직이 필요한 경우 여기에 구현
+        return true; // true를 반환하면 뒤로가기 허용
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('카탈로그 상세'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Get.back(),
+            tooltip: '뒤로가기',
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // 카탈로그 정보 헤더
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.surfaceVariant,
-            child: Consumer<CatalogProvider>(
-              builder: (context, catalogProvider, child) {
-                // 현재 카탈로그 정보 가져오기 (실시간 업데이트된 정보)
-                final currentCatalog =
-                    catalogProvider.getCatalogById(widget.catalog.catalogId) ??
-                    widget.catalog;
+        ),
+        floatingActionButton: !widget.isPublic
+            ? FloatingActionButton(
+                onPressed: () {
+                  Get.to(() => ItemAddScreen(catalogId: widget.catalogId));
+                },
+                backgroundColor: const Color(0xFF6200EE),
+                child: const Icon(Icons.add, color: Colors.white),
+              )
+            : null,
+        body: GetX<CatalogController>(
+          builder: (controller) {
+            if (controller.isLoading && controller.currentCatalog == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            if (controller.error.isNotEmpty &&
+                controller.currentCatalog == null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                currentCatalog.title,
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                currentCatalog.description,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
-                          ),
-                        ),
-                        // 수집률 배지 (실시간 업데이트)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: currentCatalog.completionRate == 100
-                                ? Colors.green.shade100
-                                : Colors.blue.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                currentCatalog.completionRate == 100
-                                    ? Icons.check_circle
-                                    : Icons.pie_chart,
-                                size: 16,
-                                color: currentCatalog.completionRate == 100
-                                    ? Colors.green.shade800
-                                    : Colors.blue.shade800,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${currentCatalog.ownedCount}/${currentCatalog.itemCount} (${currentCatalog.completionRate.toInt()}%)',
-                                style: TextStyle(
-                                  color: currentCatalog.completionRate == 100
-                                      ? Colors.green.shade800
-                                      : Colors.blue.shade800,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Text('오류: ${controller.error}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => controller.loadCatalog(widget.catalogId),
+                      child: const Text('다시 시도'),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
+                  ],
+                ),
+              );
+            }
+
+            final catalog = controller.currentCatalog;
+            if (catalog == null) {
+              return const Center(child: Text('카탈로그를 찾을 수 없습니다'));
+            }
+
+            return Column(
+              children: [
+                // 카탈로그 헤더
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (catalog.thumbnailUrl != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            ApiService.getImageUrl(catalog.thumbnailUrl),
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 200,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported,
+                                    size: 64, color: Colors.grey),
+                              );
+                            },
+                          ),
+                        )
+                      else
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          height: 200,
+                          width: double.infinity,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            currentCatalog.category,
-                            style: const TextStyle(fontSize: 12),
-                          ),
+                          child: const Icon(Icons.collections_bookmark,
+                              size: 64, color: Colors.grey),
                         ),
-                        const SizedBox(width: 8),
-                        if (currentCatalog.tags.isNotEmpty)
-                          ...currentCatalog.tags.map(
-                            (tag) => Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                      const SizedBox(height: 16),
+                      Text(
+                        catalog.title,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        catalog.description,
+                        style:
+                            const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.collections,
+                              label: '아이템 수',
+                              value: '${catalog.itemCount}',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.check_circle,
+                              label: '보유',
+                              value: '${catalog.ownedCount}',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.percent,
+                              label: '수집률',
+                              value:
+                                  '${catalog.completionRate.toStringAsFixed(1)}%',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (_isOwnedCatalog)
+                        // 자신이 생성한 카탈로그 (편집/삭제 버튼)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Get.to(() => CatalogEditScreen(
+                                        catalogId: catalog.catalogId,
+                                      ));
+                                },
+                                icon: const Icon(Icons.edit),
+                                label: const Text('편집하기'),
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.blue.shade200),
-                              ),
-                              child: Text(
-                                tag,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.blue.shade800,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _handleDeleteCatalog,
+                                icon: const Icon(Icons.delete),
+                                label: const Text('삭제하기'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          // 아이템 목록
-          Expanded(child: _buildItemList()),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  CreateItemScreen(catalogId: widget.catalog.catalogId),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Widget _buildItemList() {
-    return Consumer<ItemProvider>(
-      builder: (context, itemProvider, child) {
-        if (itemProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (itemProvider.error != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  '오류가 발생했습니다',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(itemProvider.error!),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    itemProvider.clearError();
-                    itemProvider.loadItems(widget.catalog.catalogId);
-                  },
-                  child: const Text('다시 시도'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (itemProvider.items.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  '아이템이 없습니다',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '+ 버튼을 눌러 첫 번째 아이템을 추가해보세요',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: itemProvider.items.length,
-          itemBuilder: (context, index) {
-            final item = itemProvider.items[index];
-            return _buildItemCard(item);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildItemCard(Item item) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(item: item),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // 아이템 이미지 (있는 경우)
-                  if (item.imageUrl != null) ...[
-                    Hero(
-                      tag: 'item-${item.itemId}',
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey.shade200,
+                          ],
+                        )
+                      else
+                        // 다른 사람이 생성한 공개 카탈로그 (저장/저장해제 버튼)
+                        Builder(
+                          builder: (context) {
+                            if (_isSavedCatalog) {
+                              // 이미 저장된 카탈로그 - "이미 저장됨" 상태 표시
+                              return SizedBox(
+                                width: double.infinity,
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          color: Colors.green),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        '이미 저장된 카탈로그입니다',
+                                        style: TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            } else {
+                              // 아직 저장하지 않은 카탈로그 - 저장 버튼
+                              return SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      _isSaving ? null : _handleSaveCatalog,
+                                  icon: _isSaving
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        )
+                                      : const Icon(Icons.add),
+                                  label: Text(
+                                      _isSaving ? '저장 중...' : '내 카탈로그에 저장'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6200EE),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                  ),
+                                ),
+                              );
+                            }
+                          },
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            item.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.inventory_2,
+                    ],
+                  ),
+                ),
+                const Divider(),
+                // 아이템 리스트
+                Expanded(
+                  child: controller.currentCatalogItems.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.inventory_2_outlined,
+                                size: 64,
                                 color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                '아이템이 없습니다',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              if (!widget.isPublic) ...[
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    Get.to(() => ItemAddScreen(
+                                        catalogId: widget.catalogId));
+                                  },
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('첫 번째 아이템 추가하기'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: () =>
+                              controller.loadCatalog(widget.catalogId),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: controller.currentCatalogItems.length,
+                            itemBuilder: (context, index) {
+                              final item =
+                                  controller.currentCatalogItems[index];
+                              return _ItemCard(
+                                item: item,
+                                isOwnedCatalog: _isOwnedCatalog,
                               );
                             },
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        if (item.description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            item.description,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: Colors.grey.shade600),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  // 보유 상태 스위치
-                  Switch(
-                    value: item.owned,
-                    onChanged: (value) async {
-                      try {
-                        await context.read<ItemProvider>().toggleItemOwned(
-                          item.itemId,
-                        );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                item.owned ? '보유 해제되었습니다' : '보유로 설정되었습니다',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('오류: $e'),
-                              backgroundColor: Colors.red,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-
-              // 사용자 정의 필드 표시
-              if (item.userFields.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: item.userFields.entries
-                      .map(
-                        (entry) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Text(
-                            '${entry.key}: ${entry.value}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.blue.shade800,
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
                 ),
               ],
-
-              const SizedBox(height: 12),
-
-              // 하단 정보 및 액션
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: item.owned
-                          ? Colors.green.shade100
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item.owned ? '보유' : '미보유',
-                      style: TextStyle(
-                        color: item.owned
-                            ? Colors.green.shade800
-                            : Colors.grey.shade800,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _showDeleteDialog(item),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
+}
 
-  void _showDeleteDialog(Item item) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('아이템 삭제'),
-        content: Text('${item.name}을(를) 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Icon(icon, size: 24, color: const Color(0xFF6200EE)),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ItemCard extends StatelessWidget {
+  final Item item;
+  final bool isOwnedCatalog;
+
+  const _ItemCard({
+    required this.item,
+    required this.isOwnedCatalog,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () {
+          Get.to(() => ItemDetailScreen(
+                itemId: item.itemId,
+                isOwnedCatalog: isOwnedCatalog,
+              ));
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              if (item.imageUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    ApiService.getImageUrl(item.imageUrl),
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image_not_supported,
+                            color: Colors.grey),
+                      );
+                    },
+                  ),
+                )
+              else
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.image, color: Colors.grey),
+                ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.description,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              // 수집 상태 표시만 (토글 기능 제거)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: item.owned
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.owned ? Icons.check_circle : Icons.circle_outlined,
+                      size: 16,
+                      color: item.owned ? Colors.green : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.owned ? '보유' : '미보유',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: item.owned ? Colors.green : Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await context.read<ItemProvider>().deleteItem(item.itemId);
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('아이템이 삭제되었습니다')));
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('오류: $e')));
-                }
-              }
-            },
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        ),
       ),
     );
   }

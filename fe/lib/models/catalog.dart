@@ -1,40 +1,20 @@
-import 'package:json_annotation/json_annotation.dart';
-
-part 'catalog.g.dart';
-
-@JsonSerializable()
 class Catalog {
-  @JsonKey(name: 'catalog_id')
   final String catalogId;
-
-  @JsonKey(name: 'user_id')
   final String userId;
-
   final String title;
   final String description;
   final String category;
   final List<String> tags;
   final String visibility;
-
-  @JsonKey(name: 'thumbnail_url')
   final String? thumbnailUrl;
-
-  @JsonKey(name: 'created_at')
-  final String createdAt;
-
-  @JsonKey(name: 'updated_at')
-  final String updatedAt;
-
-  @JsonKey(name: 'item_count')
+  final DateTime createdAt;
+  final DateTime updatedAt;
   final int itemCount;
-
-  @JsonKey(name: 'owned_count')
   final int ownedCount;
-
-  @JsonKey(name: 'completion_rate')
   final double completionRate;
+  final String? originalCatalogId; // 복사본인 경우 원본 카탈로그 ID
 
-  const Catalog({
+  Catalog({
     required this.catalogId,
     required this.userId,
     required this.title,
@@ -45,37 +25,49 @@ class Catalog {
     this.thumbnailUrl,
     required this.createdAt,
     required this.updatedAt,
-    required this.itemCount,
-    required this.ownedCount,
-    required this.completionRate,
+    this.itemCount = 0,
+    this.ownedCount = 0,
+    this.completionRate = 0.0,
+    this.originalCatalogId,
   });
 
-  factory Catalog.fromJson(Map<String, dynamic> json) =>
-      _$CatalogFromJson(json);
-  Map<String, dynamic> toJson() => _$CatalogToJson(this);
-}
+  factory Catalog.fromJson(Map<String, dynamic> json) {
+    return Catalog(
+      catalogId: json['catalog_id'] as String,
+      userId: json['user_id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      category: json['category'] as String,
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+              [],
+      visibility: json['visibility'] as String,
+      thumbnailUrl: json['thumbnail_url'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      itemCount: json['item_count'] as int? ?? 0,
+      ownedCount: json['owned_count'] as int? ?? 0,
+      completionRate: (json['completion_rate'] as num?)?.toDouble() ?? 0.0,
+      originalCatalogId: json['original_catalog_id'] as String?,
+    );
+  }
 
-@JsonSerializable()
-class CatalogCreate {
-  final String title;
-  final String description;
-  final String category;
-  final List<String> tags;
-  final String visibility;
-
-  @JsonKey(name: 'thumbnail_url')
-  final String? thumbnailUrl;
-
-  const CatalogCreate({
-    required this.title,
-    required this.description,
-    this.category = '미분류',
-    this.tags = const [],
-    this.visibility = 'public',
-    this.thumbnailUrl,
-  });
-
-  factory CatalogCreate.fromJson(Map<String, dynamic> json) =>
-      _$CatalogCreateFromJson(json);
-  Map<String, dynamic> toJson() => _$CatalogCreateToJson(this);
+  Map<String, dynamic> toJson() {
+    return {
+      'catalog_id': catalogId,
+      'user_id': userId,
+      'title': title,
+      'description': description,
+      'category': category,
+      'tags': tags,
+      'visibility': visibility,
+      'thumbnail_url': thumbnailUrl,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'item_count': itemCount,
+      'owned_count': ownedCount,
+      'completion_rate': completionRate,
+      'original_catalog_id': originalCatalogId,
+    };
+  }
 }

@@ -10,7 +10,15 @@
 .buildlog/
 .history
 
+*.venv
+*.vscode
+*.kiro
 
+# Flutter development tools
+devtools_options.yaml
+
+# Prototype/Sample files
+proto/sample/
 
 # Flutter repo-specific
 /bin/cache/
@@ -76,6 +84,9 @@ unlinked_spec.ds
 **/ios/**/.symlinks/
 **/ios/**/profile
 **/ios/**/xcuserdata
+**/ios/**/xcshareddata/
+**/ios/**/xcworkspace/
+**/ios/**/project.pbxproj
 **/ios/.generated/
 **/ios/Flutter/.last_build_id
 **/ios/Flutter/App.framework
@@ -96,6 +107,10 @@ unlinked_spec.ds
 **/macos/Flutter/GeneratedPluginRegistrant.swift
 **/macos/Flutter/ephemeral
 **/xcuserdata/
+**/xcshareddata/
+**/xcworkspace/
+**/macos/**/project.pbxproj
+fe/macos/Runner.xcworkspace/contents.xcworkspacedata
 
 # Windows
 **/windows/flutter/generated_plugin_registrant.cc
