@@ -1,20 +1,33 @@
+/**
+ * 카탈로그 데이터 관리 컨트롤러
+ * - GetX 반응형 상태 관리 사용
+ * - catalog-api(FastAPI)와 연동하여 카탈로그/아이템 CRUD
+ * - 사용자별 수집 상태 관리 (owned 체크박스)
+ * - 카탈로그 저장/복사 기능 (다른 사용자 카탈로그를 내 컬렉션에 추가)
+ */
+
 import 'package:get/get.dart';
 import '../models/catalog.dart';
 import '../models/item.dart';
 import '../services/api_service.dart';
 
 class CatalogController extends GetxController {
+  // API 서비스 인스턴스 (catalog-api 통신용)
   final ApiService _apiService = ApiService();
 
-  final RxList<Catalog> _myCatalogs = <Catalog>[].obs;
-  final RxList<Catalog> _publicCatalogs = <Catalog>[].obs;
-  final Rx<Catalog?> _currentCatalog = Rx<Catalog?>(null);
-  final RxList<Item> _currentCatalogItems = <Item>[].obs;
-  final RxBool _isLoading = false.obs;
-  final RxString _error = ''.obs;
-  final RxSet<String> _savedCatalogIds = <String>{}.obs;
-  final RxMap<String, String> _originalToCopiedIdMap = <String, String>{}.obs;
+  // 반응형 상태 변수들 (GetX .obs로 UI 자동 업데이트)
+  final RxList<Catalog> _myCatalogs = <Catalog>[].obs; // 내 카탈로그 목록 (홈 화면)
+  final RxList<Catalog> _publicCatalogs = <Catalog>[].obs; // 공개 카탈로그 목록 (탐색 화면)
+  final Rx<Catalog?> _currentCatalog = Rx<Catalog?>(null); // 현재 보고 있는 카탈로그
+  final RxList<Item> _currentCatalogItems = <Item>[].obs; // 현재 카탈로그의 아이템 목록
+  final RxBool _isLoading = false.obs; // 로딩 상태
+  final RxString _error = ''.obs; // 에러 메시지
+  final RxSet<String> _savedCatalogIds =
+      <String>{}.obs; // 저장한 카탈로그 ID 집합 (중복 방지)
+  final RxMap<String, String> _originalToCopiedIdMap =
+      <String, String>{}.obs; // 원본→복사본 ID 매핑
 
+  // Getter들 (UI에서 접근용)
   List<Catalog> get myCatalogs => _myCatalogs;
   List<Catalog> get publicCatalogs => _publicCatalogs;
   Catalog? get currentCatalog => _currentCatalog.value;
@@ -22,11 +35,18 @@ class CatalogController extends GetxController {
   bool get isLoading => _isLoading.value;
   String get error => _error.value;
 
+  // 카탈로그 저장 여부 확인 (탐색 화면에서 저장 버튼 상태 결정)
   bool isCatalogSaved(String catalogId) => _savedCatalogIds.contains(catalogId);
 
+  // 원본 카탈로그 ID로 복사본 카탈로그 ID 조회
   String? getCopiedCatalogId(String originalCatalogId) =>
       _originalToCopiedIdMap[originalCatalogId];
 
+  /**
+   * JWT 토큰 설정
+   * - AuthController에서 로그인 성공 시 호출
+   * - catalog-api 인증을 위해 API 서비스에 토큰 전달
+   */
   void setApiToken(String? token) {
     _apiService.setToken(token);
   }
@@ -53,11 +73,18 @@ class CatalogController extends GetxController {
     }
   }
 
+  /**
+   * 내 카탈로그 목록 로드 (홈 화면용)
+   * - catalog-api의 /api/user-catalogs/my-catalogs 엔드포인트 호출
+   * - 내가 생성한 카탈로그 + 저장한 카탈로그(복사본) 모두 조회
+   * - 저장된 카탈로그 매핑 정보 구축 (중복 저장 방지 및 UI 상태 관리용)
+   */
   Future<void> loadMyCatalogs() async {
     _isLoading.value = true;
     _error.value = '';
 
     try {
+      // catalog-api에서 내 카탈로그 목록 조회
       final data = await _apiService.getMyCatalogs();
       _myCatalogs.value = data.map((json) => Catalog.fromJson(json)).toList();
 
@@ -67,10 +94,10 @@ class CatalogController extends GetxController {
 
       for (final catalog in _myCatalogs) {
         if (catalog.originalCatalogId != null) {
-          // 복사본 카탈로그인 경우
-          _savedCatalogIds.add(catalog.originalCatalogId!);
+          // 복사본 카탈로그인 경우 (다른 사용자 카탈로그를 저장한 것)
+          _savedCatalogIds.add(catalog.originalCatalogId!); // 원본 ID를 저장됨으로 표시
           _originalToCopiedIdMap[catalog.originalCatalogId!] =
-              catalog.catalogId;
+              catalog.catalogId; // 원본→복사본 매핑
         }
       }
 
@@ -327,25 +354,34 @@ class CatalogController extends GetxController {
     }
   }
 
+  /**
+   * 아이템 보유 상태 토글 (핵심 기능)
+   * - 사용자가 체크박스 클릭 시 호출
+   * - catalog-api의 /api/items/{itemId}/toggle-owned 엔드포인트 호출
+   * - owned 상태를 True ↔ False로 변경
+   * - UI 즉시 업데이트 후 카탈로그 수집률 갱신
+   */
   Future<bool> toggleItemOwned(String itemId) async {
     try {
+      // catalog-api에 아이템 상태 토글 요청
       final data = await _apiService.toggleItemOwned(itemId);
       final updatedItem = Item.fromJson(data);
 
+      // 현재 아이템 목록에서 해당 아이템 업데이트
       final index = _currentCatalogItems.indexWhere((i) => i.itemId == itemId);
       if (index != -1) {
-        _currentCatalogItems[index] = updatedItem;
+        _currentCatalogItems[index] = updatedItem; // UI 즉시 반영
       }
 
-      // 카탈로그 정보 갱신
+      // 카탈로그 정보 갱신 (수집률 업데이트)
       if (_currentCatalog.value != null) {
         await loadCatalog(_currentCatalog.value!.catalogId);
       }
 
-      return true;
+      return true; // 토글 성공
     } catch (e) {
       _error.value = e.toString();
-      return false;
+      return false; // 토글 실패
     }
   }
 

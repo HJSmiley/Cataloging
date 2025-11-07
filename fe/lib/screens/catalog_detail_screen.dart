@@ -1,3 +1,12 @@
+/**
+ * 카탈로그 상세 화면
+ * - 카탈로그 정보와 아이템 목록 표시
+ * - 소유자/비소유자에 따른 다른 UI 제공
+ * - 아이템 수집 상태 관리 (체크박스 토글)
+ * - 카탈로그 저장/편집/삭제 기능
+ * - 실시간 수집률 업데이트
+ */
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
@@ -11,8 +20,8 @@ import 'item_add_screen.dart';
 import 'home_screen.dart';
 
 class CatalogDetailScreen extends StatefulWidget {
-  final String catalogId;
-  final bool isPublic;
+  final String catalogId; // 표시할 카탈로그 ID
+  final bool isPublic; // 공개 모드 여부 (탐색에서 온 경우 true)
 
   const CatalogDetailScreen({
     super.key,
@@ -25,9 +34,10 @@ class CatalogDetailScreen extends StatefulWidget {
 }
 
 class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
-  bool _isOwnedCatalog = false;
-  bool _isSavedCatalog = false;
-  bool _isSaving = false;
+  // 카탈로그 상태 관리 변수들
+  bool _isOwnedCatalog = false; // 내가 소유한 카탈로그인지
+  bool _isSavedCatalog = false; // 이미 저장한 카탈로그인지
+  bool _isSaving = false; // 저장 중인지
 
   @override
   void initState() {
@@ -37,35 +47,44 @@ class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
     });
   }
 
+  /**
+   * 카탈로그 로드 및 소유권 확인
+   * - catalog-api에서 카탈로그 상세 정보 및 아이템 목록 조회
+   * - 현재 사용자의 소유권 및 저장 상태 확인
+   * - UI 상태 업데이트 (편집/저장 버튼 표시 여부 결정)
+   */
   Future<void> _loadCatalogAndCheckOwnership() async {
     final controller = Get.find<CatalogController>();
+
+    // 카탈로그 상세 정보 및 아이템 목록 로드
     await controller.loadCatalog(widget.catalogId);
 
     if (!widget.isPublic) {
-      // 공개 카탈로그가 아닌 경우 소유권 확인
+      // 내 카탈로그에서 온 경우: 소유권 확인
       final isOwned = await controller.checkCatalogOwnership(widget.catalogId);
       setState(() {
         _isOwnedCatalog = isOwned;
       });
     } else {
-      // 공개 카탈로그인 경우 실제 소유자인지 확인
+      // 탐색에서 온 공개 카탈로그인 경우: 소유자 및 저장 상태 확인
       final authController = Get.find<AuthController>();
       final currentUserId = authController.user?.id.toString();
 
-      // 저장 상태도 확인
+      // 저장 상태 확인 (중복 저장 방지용)
       final isSaved = await controller.checkCatalogSaved(widget.catalogId);
       setState(() {
         _isSavedCatalog = isSaved;
       });
+
       final catalog = controller.currentCatalog;
 
       if (catalog != null && currentUserId == catalog.userId) {
-        // 자신이 생성한 공개 카탈로그
+        // 자신이 생성한 공개 카탈로그 - 편집 가능
         setState(() {
           _isOwnedCatalog = true;
         });
       } else {
-        // 다른 사람이 생성한 공개 카탈로그
+        // 다른 사람이 생성한 공개 카탈로그 - 저장만 가능
         setState(() {
           _isOwnedCatalog = false;
         });
@@ -73,9 +92,15 @@ class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
     }
   }
 
+  /**
+   * 카탈로그 저장 처리 (다른 사용자의 카탈로그를 내 컬렉션에 복사)
+   * - catalog-api의 /api/user-catalogs/save-catalog 엔드포인트 호출
+   * - 원본 카탈로그와 모든 아이템을 완전 복사하여 새 카탈로그 생성
+   * - 저장 성공 시 UI 상태 업데이트 (저장됨 표시)
+   */
   Future<void> _handleSaveCatalog() async {
     setState(() {
-      _isSaving = true;
+      _isSaving = true; // 저장 중 상태 표시
     });
 
     final controller = Get.find<CatalogController>();
@@ -83,18 +108,21 @@ class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
 
     if (mounted) {
       setState(() {
-        _isSaving = false;
+        _isSaving = false; // 저장 완료
       });
 
       if (success) {
         Get.snackbar('성공', '카탈로그가 저장되었습니다');
-        // 저장 성공 시 현재 화면의 상태를 업데이트
+
+        // 저장 성공 시 UI 상태 업데이트
         setState(() {
-          _isSavedCatalog = true;
+          _isSavedCatalog = true; // 저장됨 상태로 변경
         });
+
         // 카탈로그 정보를 다시 로드하여 최신 상태 반영
         await controller.loadCatalog(widget.catalogId);
       } else {
+        // 저장 실패 (중복 저장, 권한 없음 등)
         Get.snackbar('실패', '저장 실패: ${controller.error}',
             backgroundColor: Colors.red, colorText: Colors.white);
       }
@@ -161,10 +189,10 @@ class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      onPopInvoked: (didPop) {
         // 뒤로가기 시 추가 로직이 필요한 경우 여기에 구현
-        return true; // true를 반환하면 뒤로가기 허용
+        // didPop이 true면 이미 뒤로가기가 실행됨
       },
       child: Scaffold(
         appBar: AppBar(

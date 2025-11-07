@@ -1,16 +1,25 @@
+/**
+ * 슬라이드 투 액트 버튼 위젯
+ * - 아이템 수집 상태 토글을 위한 커스텀 UI 컴포넌트
+ * - 사용자가 슬라이더를 80% 이상 드래그하면 액션 실행
+ * - 수집/해제에 따른 다른 색상과 아이콘 표시
+ * - 로딩 상태와 완료 상태 애니메이션 지원
+ * - 실수로 인한 상태 변경 방지 (의도적인 슬라이드 필요)
+ */
+
 import 'package:flutter/material.dart';
 
 class SlideToActButton extends StatefulWidget {
-  final String text;
-  final String completedText;
-  final IconData icon;
-  final IconData completedIcon;
-  final Color backgroundColor;
-  final Color completedBackgroundColor;
-  final Color sliderColor;
-  final VoidCallback onSlideComplete;
-  final bool isCompleted;
-  final bool isLoading;
+  final String text; // 기본 상태 텍스트
+  final String completedText; // 완료 상태 텍스트
+  final IconData icon; // 기본 상태 아이콘
+  final IconData completedIcon; // 완료 상태 아이콘
+  final Color backgroundColor; // 기본 배경색
+  final Color completedBackgroundColor; // 완료 시 배경색
+  final Color sliderColor; // 슬라이더 버튼 색상
+  final VoidCallback onSlideComplete; // 슬라이드 완료 시 호출될 함수
+  final bool isCompleted; // 완료 상태 여부
+  final bool isLoading; // 로딩 상태 여부
 
   const SlideToActButton({
     super.key,
@@ -32,13 +41,14 @@ class SlideToActButton extends StatefulWidget {
 
 class _SlideToActButtonState extends State<SlideToActButton>
     with TickerProviderStateMixin {
-  late AnimationController _slideController;
-  late AnimationController _scaleController;
-  late Animation<double> _slideAnimation;
-  late Animation<double> _scaleAnimation;
+  // 애니메이션 컨트롤러들
+  late AnimationController _slideController; // 슬라이드 진행 애니메이션
+  late AnimationController _scaleController; // 버튼 스케일 애니메이션
+  late Animation<double> _slideAnimation; // 슬라이드 애니메이션
+  late Animation<double> _scaleAnimation; // 스케일 애니메이션
 
-  double _dragPosition = 0.0;
-  bool _isDragging = false;
+  // 드래그 상태 관리
+  double _dragPosition = 0.0; // 현재 드래그 위치
 
   @override
   void initState() {
@@ -76,31 +86,46 @@ class _SlideToActButtonState extends State<SlideToActButton>
     super.dispose();
   }
 
+  /**
+   * 드래그 시작 처리
+   * - 로딩 중이면 드래그 무시
+   * - 버튼 스케일 애니메이션 시작 (시각적 피드백)
+   */
   void _onPanStart(DragStartDetails details) {
     if (widget.isLoading) return;
 
-    setState(() {
-      _isDragging = true;
-    });
-    _scaleController.forward();
+    _scaleController.forward(); // 버튼 축소 애니메이션
   }
 
+  /**
+   * 드래그 업데이트 처리
+   * - 슬라이더 위치 업데이트
+   * - 드래그 범위 제한 (0 ~ 최대 거리)
+   * - 진행률에 따른 애니메이션 업데이트
+   */
   void _onPanUpdate(DragUpdateDetails details, double maxWidth) {
     if (widget.isLoading) return;
 
     final sliderWidth = 56.0; // 슬라이더 버튼 크기
-    final maxDragDistance = maxWidth - sliderWidth - 8; // 패딩 고려
+    final maxDragDistance = maxWidth - sliderWidth - 8; // 최대 드래그 거리 (패딩 고려)
 
     setState(() {
+      // 드래그 위치 업데이트 (범위 제한)
       _dragPosition =
           (_dragPosition + details.delta.dx).clamp(0.0, maxDragDistance);
     });
 
-    // 슬라이드 진행률에 따른 애니메이션
+    // 슬라이드 진행률 계산 및 애니메이션 업데이트
     final progress = _dragPosition / maxDragDistance;
     _slideController.value = progress;
   }
 
+  /**
+   * 드래그 종료 처리
+   * - 80% 이상 드래그했으면 액션 실행
+   * - 미달 시 원래 위치로 복귀
+   * - 스케일 애니메이션 복원
+   */
   void _onPanEnd(DragEndDetails details, double maxWidth) {
     if (widget.isLoading) return;
 
@@ -108,28 +133,30 @@ class _SlideToActButtonState extends State<SlideToActButton>
     final maxDragDistance = maxWidth - sliderWidth - 8;
     final threshold = maxDragDistance * 0.8; // 80% 지점에서 완료
 
-    setState(() {
-      _isDragging = false;
-    });
-    _scaleController.reverse();
+    _scaleController.reverse(); // 버튼 스케일 복원
 
     if (_dragPosition >= threshold) {
-      // 슬라이드 완료
+      // 슬라이드 완료: 액션 실행 후 리셋
       _slideController.forward().then((_) {
-        widget.onSlideComplete();
+        widget.onSlideComplete(); // 수집 상태 토글 함수 호출
         _resetSlider();
       });
     } else {
-      // 슬라이드 미완료 - 원래 위치로 복귀
+      // 슬라이드 미완료: 원래 위치로 복귀
       _resetSlider();
     }
   }
 
+  /**
+   * 슬라이더 위치 리셋
+   * - 드래그 위치를 0으로 초기화
+   * - 슬라이드 애니메이션 리셋
+   */
   void _resetSlider() {
     setState(() {
-      _dragPosition = 0.0;
+      _dragPosition = 0.0; // 시작 위치로 복귀
     });
-    _slideController.reset();
+    _slideController.reset(); // 애니메이션 리셋
   }
 
   @override
@@ -152,7 +179,7 @@ class _SlideToActButtonState extends State<SlideToActButton>
                   borderRadius: BorderRadius.circular(32),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -198,7 +225,7 @@ class _SlideToActButtonState extends State<SlideToActButton>
                               borderRadius: BorderRadius.circular(28),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),

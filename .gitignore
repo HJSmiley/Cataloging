@@ -14,6 +14,9 @@
 *.vscode
 *.kiro
 
+# IDE settings
+.vscode/
+
 # Flutter development tools
 devtools_options.yaml
 
