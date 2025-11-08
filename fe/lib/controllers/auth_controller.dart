@@ -10,6 +10,7 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import 'catalog_controller.dart';
 
 class AuthController extends GetxController {
   // API 서비스 인스턴스 (user-api 통신용)
