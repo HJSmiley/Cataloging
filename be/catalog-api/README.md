@@ -38,7 +38,6 @@ catalog-api/
 ├── .env.example             # 환경 변수 예시
 ├── main.py                  # 하위 호환성을 위한 엔트리포인트
 ├── requirements.txt         # Python 의존성
-├── Dockerfile               # Docker 이미지 빌드
 └── README.md                # 프로젝트 문서
 
 ```
@@ -163,16 +162,6 @@ SQLite를 사용하며, 다음 테이블들이 자동으로 생성됩니다:
 2. `app/crud/`에 CRUD 함수 작성
 3. `app/api/`에 라우터 생성
 4. `app/main.py`에 라우터 등록
-
-## Docker
-
-```bash
-# 이미지 빌드
-docker build -t catalog-api .
-
-# 컨테이너 실행
-docker run -p 8002:8002 catalog-api
-```
 
 ## 라이선스
 
