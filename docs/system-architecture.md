@@ -3,33 +3,40 @@
 ## 개요
 
 카탈로깅 앱의 전체 시스템 아키텍처와 클라이언트-서버 간 정보 교환 구조를 설명합니다.
+이 문서는 be/catalog-api (FastAPI), be/user-api (Spring Boot), fe (Flutter) 세 파트의 실행 흐름과 통신 구조를 상세히 다룹니다.
 
 ## 시스템 구성도
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    클라이언트 (Flutter Web)                    │
+│                    클라이언트 (Flutter)                        │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
 │  │   UI Layer  │  │ State Mgmt  │  │    API Service      │  │
-│  │             │  │ (Provider)  │  │                     │  │
+│  │             │  │   (GetX)    │  │                     │  │
 │  │ - Screens   │  │             │  │ - HTTP Client       │  │
-│  │ - Widgets   │  │ - Catalog   │  │ - JSON Serialization│  │
-│  │ - Forms     │  │ - Item      │  │ - JWT Auth          │  │
-│  │ - Auth      │  │ - User      │  │ - Error Handling    │  │
+│  │ - Widgets   │  │ - Auth      │  │ - JSON Serialization│  │
+│  │ - Forms     │  │ - Catalog   │  │ - JWT Auth          │  │
+│  │ - Animation │  │ - Item      │  │ - Error Handling    │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│                                                               │
+│  포트: 3000 (웹) / 모바일 앱                                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               │ HTTP/JSON + JWT
                               │ REST API
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    ALB (Application Load Balancer)          │
+│              개발 환경 (직접 연결)                             │
+│  프로덕션: ALB (Application Load Balancer)                   │
 ├─────────────────────────────────────────────────────────────┤
 │  라우팅 규칙:                                                │
+│  - /api/auth/** → Spring Boot (포트 8081)                   │
 │  - /api/users/** → Spring Boot (포트 8081)                  │
-│  - /api/catalogs/** → FastAPI (포트 8000)                   │
-│  - /api/items/** → FastAPI (포트 8000)                      │
+│  - /api/catalogs/** → FastAPI (포트 8002)                   │
+│  - /api/items/** → FastAPI (포트 8002)                      │
+│  - /api/user-catalogs/** → FastAPI (포트 8002)              │
+│  - /api/upload/** → FastAPI (포트 8002)                     │
 └─────────────────────────────────────────────────────────────┘
                     │                           │
                     ▼                           ▼
@@ -38,18 +45,19 @@
 ├─────────────────────────────┤    ├─────────────────────────────┤
 │ ┌─────────────────────────┐ │    │ ┌─────────────────────────┐ │
 │ │      Controllers        │ │    │ │       Routers           │ │
-│ │ - AuthController        │ │    │ │ - Catalogs              │ │
-│ │ - UserController        │ │    │ │ - Items                 │ │
-│ │ - TestController        │ │    │ │ - Upload                │ │
+│ │ - AuthController        │ │    │ │ - catalogs.py           │ │
+│ │ - UserController        │ │    │ │ - items.py              │ │
+│ │                         │ │    │ │ - user_catalogs.py      │ │
+│ │                         │ │    │ │ - upload.py             │ │
 │ └─────────────────────────┘ │    │ └─────────────────────────┘ │
 │ ┌─────────────────────────┐ │    │ ┌─────────────────────────┐ │
-│ │      Security           │ │    │ │      Models             │ │
-│ │ - JWT Provider          │ │    │ │ - Pydantic Validation   │ │
-│ │ - OAuth2 Handler        │ │    │ │ - JSON Serialization    │ │
-│ │ - CORS Config           │ │    │ │ - SQLAlchemy ORM        │ │
+│ │      Security           │ │    │ │      Middleware         │ │
+│ │ - JWT Provider          │ │    │ │ - JWT 검증 (utils.py)   │ │
+│ │ - OAuth2 Handler        │ │    │ │ - 로깅 미들웨어         │ │
+│ │ - CORS Config           │ │    │ │ - CORS 설정             │ │
 │ └─────────────────────────┘ │    │ └─────────────────────────┘ │
 │                             │    │                             │
-│ 포트: 8081                   │    │ 포트: 8000                   │
+│ 포트: 8081                   │    │ 포트: 8002                   │
 │ 데이터베이스: H2 (개발용)     │    │ 데이터베이스: SQLite         │
 └─────────────────────────────┘    └─────────────────────────────┘
                     │                           │
@@ -66,19 +74,35 @@
 │ │ - nickname              │ │    │ │ - category              │ │
 │ │ - introduction          │ │    │ │ - tags (JSON)           │ │
 │ │ - profile_image         │ │    │ │ - visibility            │ │
-│ │ - status                │ │    │ │ - created_at            │ │
-│ │ - created_at            │ │    │ │ - updated_at            │ │
-│ │ - updated_at            │ │    │ └─────────────────────────┘ │
-│ └─────────────────────────┘ │    │ ┌─────────────────────────┐ │
+│ │ - status                │ │    │ │ - thumbnail_url         │ │
+│ │ - created_at            │ │    │ │ - created_at            │ │
+│ │ - updated_at            │ │    │ │ - updated_at            │ │
+│ └─────────────────────────┘ │    │ └─────────────────────────┘ │
+│                             │    │ ┌─────────────────────────┐ │
 │                             │    │ │     items 테이블         │ │
 │                             │    │ │ - item_id (PK)          │ │
 │                             │    │ │ - catalog_id (FK)       │ │
 │                             │    │ │ - name                  │ │
 │                             │    │ │ - description           │ │
-│                             │    │ │ - owned                 │ │
+│                             │    │ │ - image_url             │ │
 │                             │    │ │ - user_fields (JSON)    │ │
 │                             │    │ │ - created_at            │ │
 │                             │    │ │ - updated_at            │ │
+│                             │    │ └─────────────────────────┘ │
+│                             │    │ ┌─────────────────────────┐ │
+│                             │    │ │ user_item_status 테이블  │ │
+│                             │    │ │ - user_id (PK)          │ │
+│                             │    │ │ - item_id (PK)          │ │
+│                             │    │ │ - owned (Boolean)       │ │
+│                             │    │ │ - created_at            │ │
+│                             │    │ │ - updated_at            │ │
+│                             │    │ └─────────────────────────┘ │
+│                             │    │ ┌─────────────────────────┐ │
+│                             │    │ │ user_catalogs 테이블     │ │
+│                             │    │ │ - user_id (PK)          │ │
+│                             │    │ │ - original_catalog_id   │ │
+│                             │    │ │ - copied_catalog_id     │ │
+│                             │    │ │ - saved_at              │ │
 │                             │    │ └─────────────────────────┘ │
 └─────────────────────────────┘    └─────────────────────────────┘
 ```
@@ -88,60 +112,117 @@
 ### 1. 디렉토리 구조
 ```
 fe/lib/
-├── main.dart                      # 앱 진입점 (스플래시 + 네비게이션)
+├── main.dart                      # 앱 진입점 (GetX 초기화 + 스플래시)
 ├── models/                        # 데이터 모델
 │   ├── catalog.dart              # 카탈로그 모델
-│   ├── catalog.g.dart            # JSON 직렬화 코드 (자동생성)
 │   ├── item.dart                 # 아이템 모델
-│   ├── item.g.dart               # JSON 직렬화 코드 (자동생성)
 │   └── user.dart                 # 사용자 모델
-├── providers/                     # 상태 관리
-│   ├── auth_provider.dart        # 인증 상태 관리
-│   ├── catalog_provider.dart     # 카탈로그 상태 관리
-│   └── item_provider.dart        # 아이템 상태 관리
+├── controllers/                   # GetX 상태 관리
+│   ├── auth_controller.dart      # 인증 상태 관리
+│   └── catalog_controller.dart   # 카탈로그 상태 관리
 ├── services/                      # API 통신
-│   ├── api_service.dart          # 카탈로그/아이템 API
-│   └── auth_service.dart         # 인증 API
-└── screens/                       # UI 화면
-    ├── splash_screen.dart         # 스플래시 화면 (애니메이션)
-    ├── login_screen.dart          # 로그인 화면
-    ├── main_navigation_screen.dart # 메인 네비게이션 (4개 탭)
-    ├── home_screen.dart           # 홈 탭 (카탈로그 목록)
-    ├── explore_screen.dart        # 탐색 탭 (검색/필터링)
-    ├── add_screen.dart            # 추가 탭 (생성 기능)
-    ├── profile_screen.dart        # 마이 탭 (프로필 관리)
-    ├── catalog_detail_screen.dart # 카탈로그 상세
-    ├── item_detail_screen.dart    # 아이템 상세 (애니메이션)
-    ├── create_catalog_screen.dart # 카탈로그 생성
-    └── create_item_screen.dart    # 아이템 생성
+│   └── api_service.dart          # 통합 API 서비스 (user-api + catalog-api)
+├── screens/                       # UI 화면
+│   ├── splash_screen.dart         # 스플래시 화면 (자동 로그인)
+│   ├── login_screen.dart          # 로그인 화면
+│   ├── home_screen.dart           # 홈 화면 (내 카탈로그 목록)
+│   ├── explore_screen.dart        # 탐색 화면 (공개 카탈로그)
+│   ├── catalog_detail_screen.dart # 카탈로그 상세
+│   ├── item_detail_screen.dart    # 아이템 상세
+│   ├── item_add_screen.dart       # 아이템 추가
+│   └── profile_screen.dart        # 프로필 화면
+└── widgets/                       # 재사용 위젯
+    ├── catalog_card.dart          # 카탈로그 카드
+    ├── item_card.dart             # 아이템 카드
+    └── slide_to_act_button.dart   # 슬라이드 버튼
 ```
 
-### 2. 클라이언트가 관리하는 정보
+### 2. 클라이언트 실행 흐름
 
-#### 상태 관리 (Provider)
+#### 앱 시작 흐름
+```
+main() → MyApp
+  ↓
+GetX 전역 컨트롤러 초기화
+  - Get.put(AuthController())
+  - Get.put(CatalogController())
+  ↓
+SplashScreen 표시 (3초)
+  - 로고 애니메이션 (페이드 인 + 스케일)
+  - SharedPreferences에서 JWT 토큰 로드
+  - 토큰 있으면 user-api에 사용자 정보 요청
+  ↓
+화면 전환
+  - 인증됨 → HomeScreen
+  - 미인증 → LoginScreen
+```
+
+#### 로그인 흐름
+```
+LoginScreen
+  ↓
+이메일/닉네임 입력
+  ↓
+AuthController.devLogin()
+  ↓
+ApiService.devLogin() → POST /api/auth/dev-login (user-api)
+  ↓
+JWT 토큰 발급 + 사용자 정보 반환
+  ↓
+SharedPreferences에 토큰 저장
+  ↓
+CatalogController에 토큰 전달
+  ↓
+HomeScreen으로 이동
+```
+
+#### 상태 관리 (GetX)
 ```dart
-class CatalogProvider {
-  List<Catalog> _catalogs = [];     // 카탈로그 목록 캐시
-  bool _isLoading = false;          // 로딩 상태
-  String? _error;                   // 에러 메시지
+class AuthController extends GetxController {
+  final Rx<User?> _user = Rx<User?>(null);     // 현재 사용자
+  final RxString _token = ''.obs;              // JWT 토큰
+  final RxBool _isLoading = false.obs;         // 로딩 상태
   
-  // 실시간 수집률 업데이트
-  Future<void> updateCatalogCompletionRate(String catalogId) async {
-    final updatedCatalog = await ApiService.getCatalog(catalogId);
-    // 로컬 상태 업데이트 및 notifyListeners() 호출
+  bool get isAuthenticated => _token.value.isNotEmpty && _user.value != null;
+  
+  // 자동 로그인
+  @override
+  void onInit() {
+    super.onInit();
+    _loadToken(); // SharedPreferences에서 토큰 로드
+  }
+  
+  // 로그인
+  Future<bool> devLogin(String email, String nickname) async {
+    final response = await _apiService.devLogin(email, nickname);
+    final token = response['accessToken'];
+    await _saveToken(token);
+    _user.value = User.fromJson(response['user']);
+    
+    // CatalogController에도 토큰 전달
+    final catalogController = Get.find<CatalogController>();
+    catalogController.setApiToken(token);
+    return true;
   }
 }
 
-class ItemProvider {
-  List<Item> _items = [];           // 아이템 목록 캐시
-  bool _isLoading = false;          // 로딩 상태
-  String? _error;                   // 에러 메시지
-  Function(String, {required bool owned})? _onItemChanged; // 콜백 함수
+class CatalogController extends GetxController {
+  final RxList<Catalog> _myCatalogs = <Catalog>[].obs;    // 내 카탈로그
+  final RxList<Catalog> _publicCatalogs = <Catalog>[].obs; // 공개 카탈로그
+  final RxBool _isLoading = false.obs;
   
-  // 아이템 변경 시 카탈로그 수집률 업데이트 트리거
-  void toggleItemOwned(String itemId) async {
-    // 아이템 상태 변경 후
-    _onItemChanged?.call(updatedItem.catalogId, owned: updatedItem.owned);
+  // 내 카탈로그 로드
+  Future<void> loadMyCatalogs() async {
+    _isLoading.value = true;
+    final catalogs = await _apiService.getMyCatalogs();
+    _myCatalogs.value = catalogs.map((c) => Catalog.fromJson(c)).toList();
+    _isLoading.value = false;
+  }
+  
+  // 카탈로그 저장 (복사)
+  Future<void> saveCatalog(String catalogId) async {
+    await _apiService.saveCatalog(catalogId);
+    await loadMyCatalogs(); // 목록 새로고침
   }
 }
 ```
@@ -149,19 +230,40 @@ class ItemProvider {
 #### 데이터 모델
 ```dart
 class Catalog {
-  final String catalogId;          // 서버에서 받은 ID
+  final String catalogId;          // UUID
   final String userId;             // 사용자 ID
   final String title;              // 제목
   final String description;        // 설명
   final String category;           // 카테고리
   final List<String> tags;         // 태그 배열
-  final String visibility;         // 공개 여부
+  final String visibility;         // public/private
   final String? thumbnailUrl;      // 썸네일 URL
   final String createdAt;          // 생성일
   final String updatedAt;          // 수정일
   final int itemCount;             // 아이템 개수 (서버 계산)
   final int ownedCount;            // 보유 개수 (서버 계산)
-  final double completionRate;     // 수집률 (서버 계산, 실시간 업데이트)
+  final double completionRate;     // 수집률 (서버 계산)
+  final String? originalCatalogId; // 원본 카탈로그 ID (복사본인 경우)
+}
+
+class Item {
+  final String itemId;             // UUID
+  final String catalogId;          // 카탈로그 ID
+  final String name;               // 아이템명
+  final String description;        // 설명
+  final String? imageUrl;          // 이미지 URL
+  final bool owned;                // 보유 여부 (사용자별)
+  final Map<String, String> userFields; // 사용자 정의 필드
+  final String createdAt;          // 생성일
+  final String updatedAt;          // 수정일
+}
+
+class User {
+  final String userId;             // 사용자 ID
+  final String email;              // 이메일
+  final String nickname;           // 닉네임
+  final String? introduction;      // 자기소개
+  final String? profileImage;      // 프로필 이미지 URL
 }
 ```
 
@@ -175,29 +277,85 @@ be/user-api/
 │   ├── UserApiApplication.java # Spring Boot 메인 클래스
 │   ├── config/                 # 설정 클래스
 │   │   ├── SecurityConfig.java # Spring Security 설정
-│   │   └── WebConfig.java      # 웹 설정
+│   │   └── WebConfig.java      # 웹 설정 (CORS)
 │   ├── controller/             # REST 컨트롤러
 │   │   ├── AuthController.java # 인증 관련 API
-│   │   ├── UserController.java # 사용자 관리 API
-│   │   ├── TestController.java # 테스트용 API
-│   │   └── DevController.java  # 개발용 API
+│   │   └── UserController.java # 사용자 관리 API
 │   ├── dto/                    # 데이터 전송 객체
-│   │   └── UserDto.java        # 사용자 DTO
+│   │   ├── DevLoginRequest.java  # 개발 로그인 요청
+│   │   └── LoginResponse.java    # 로그인 응답
 │   ├── entity/                 # JPA 엔티티
 │   │   └── User.java           # 사용자 엔티티
 │   ├── repository/             # 데이터 접근 계층
 │   │   └── UserRepository.java # 사용자 리포지토리
 │   ├── security/               # 보안 관련
 │   │   ├── JwtTokenProvider.java      # JWT 토큰 생성/검증
-│   │   ├── JwtAuthenticationFilter.java # JWT 인증 필터
-│   │   └── OAuth2SuccessHandler.java   # OAuth2 성공 핸들러
+│   │   └── JwtAuthenticationFilter.java # JWT 인증 필터
 │   └── service/                # 비즈니스 로직
 │       └── UserService.java    # 사용자 서비스
 └── src/main/resources/
     └── application.yml         # 애플리케이션 설정
 ```
 
-### 2. 회원 API가 관리하는 정보
+### 2. 회원 API 실행 흐름
+
+#### 서버 시작
+```
+UserApiApplication.main()
+  ↓
+Spring Boot 컨테이너 초기화
+  - Spring Security 설정 로드
+  - JPA/Hibernate 초기화 (H2 데이터베이스)
+  - REST 컨트롤러 스캔 및 등록
+  - JWT 필터 체인 구성
+  ↓
+포트 8081에서 서비스 시작
+```
+
+#### 개발용 로그인 플로우
+```
+Flutter → POST /api/auth/dev-login
+  {
+    "email": "user@example.com",
+    "nickname": "사용자"
+  }
+  ↓
+AuthController.devLogin()
+  ↓
+UserService.findOrCreateDevUser()
+  - 이메일로 기존 사용자 조회
+  - 없으면 새 사용자 생성 (provider: "dev")
+  - 있으면 닉네임 업데이트
+  ↓
+JwtTokenProvider.createToken(userId)
+  - HS256 알고리즘으로 JWT 생성
+  - 페이로드: { "sub": "user_id" }
+  - 만료 시간: 24시간
+  ↓
+LoginResponse 반환
+  {
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "user": { "userId": "1", "email": "...", "nickname": "..." }
+  }
+```
+
+#### JWT 인증 플로우
+```
+Flutter → GET /api/users/me
+  Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+  ↓
+JwtAuthenticationFilter
+  - Authorization 헤더에서 토큰 추출
+  - JwtTokenProvider.validateToken() 검증
+  - JwtTokenProvider.getUserId() 사용자 ID 추출
+  - SecurityContext에 인증 정보 설정
+  ↓
+UserController.getCurrentUser()
+  - SecurityContext에서 사용자 ID 가져오기
+  - UserService.getUserById() 호출
+  ↓
+사용자 정보 반환
+```
 
 #### JPA 엔티티 (User)
 ```java
@@ -209,10 +367,10 @@ public class User {
     private Long id;                    // 사용자 고유 ID
     
     @Column(nullable = false)
-    private String provider;            // OAuth2 제공자 (google, naver, apple)
+    private String provider;            // "dev", "google", "naver"
     
     @Column(nullable = false, unique = true)
-    private String providerId;          // OAuth2 고유 식별자
+    private String providerId;          // 제공자별 고유 ID
     
     @Column(nullable = false)
     private String email;               // 이메일
@@ -226,7 +384,7 @@ public class User {
     private String profileImage;        // 프로필 이미지 URL
     
     @Enumerated(EnumType.STRING)
-    private UserStatus status;          // 사용자 상태 (ACTIVE, INACTIVE, DELETED)
+    private UserStatus status;          // ACTIVE, INACTIVE, DELETED
     
     @CreationTimestamp
     private LocalDateTime createdAt;    // 생성일 (자동)
@@ -240,24 +398,41 @@ public class User {
 ```java
 @Component
 public class JwtTokenProvider {
-    private final SecretKey key;                    // JWT 서명 키
-    private final long tokenValidityInMilliseconds; // 토큰 유효 시간 (24시간)
+    // JWT 설정
+    private final SecretKey key;  // "mySecretKey1234567890..." (catalog-api와 동일)
+    private final long tokenValidityInMilliseconds = 86400000; // 24시간
     
-    public String createToken(String userId);       // JWT 토큰 생성
-    public String getUserId(String token);          // 토큰에서 사용자 ID 추출
-    public boolean validateToken(String token);     // 토큰 유효성 검증
-}
-```
-
-#### OAuth2 사용자 정보 처리
-```java
-@Service
-public class UserService {
-    // OAuth2 제공자별 사용자 정보 추출 및 저장/업데이트
-    public User processOAuth2User(String provider, OAuth2User oAuth2User) {
-        // Google: sub, email, name, picture
-        // Naver: response.id, response.email, response.name, response.profile_image
-        // 기존 사용자 확인 후 정보 업데이트 또는 신규 생성
+    // JWT 토큰 생성
+    public String createToken(String userId) {
+        Date now = new Date();
+        Date validity = new Date(now.getTime() + tokenValidityInMilliseconds);
+        
+        return Jwts.builder()
+            .setSubject(userId)
+            .setIssuedAt(now)
+            .setExpiration(validity)
+            .signWith(key, SignatureAlgorithm.HS256)
+            .compact();
+    }
+    
+    // 토큰에서 사용자 ID 추출
+    public String getUserId(String token) {
+        return Jwts.parserBuilder()
+            .setSigningKey(key)
+            .build()
+            .parseClaimsJws(token)
+            .getBody()
+            .getSubject();
+    }
+    
+    // 토큰 유효성 검증
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 }
 ```
@@ -267,25 +442,139 @@ public class UserService {
 ### 1. 디렉토리 구조
 ```
 be/catalog-api/
-├── main.py                   # FastAPI 앱 진입점
+├── main.py                   # 하위 호환성을 위한 엔트리포인트
+├── .env                      # 환경 변수 설정
+├── .env.example              # 환경 변수 예시
 ├── app/
 │   ├── __init__.py
-│   ├── config.py            # 설정
-│   ├── database.py          # 데이터베이스 연결
-│   ├── models.py            # Pydantic 모델
-│   ├── utils.py             # 유틸리티 함수
-│   └── routers/             # API 라우터
+│   ├── main.py              # FastAPI 애플리케이션 엔트리포인트
+│   ├── core/                # 핵심 기능 (설정, 보안, 미들웨어)
+│   │   ├── __init__.py
+│   │   ├── config.py        # 환경 설정 및 로깅
+│   │   ├── security.py      # JWT 인증 및 사용자 검증
+│   │   └── middleware.py    # HTTP 요청/응답 로깅
+│   ├── api/                 # API 라우터 (엔드포인트)
+│   │   ├── __init__.py
+│   │   ├── catalogs.py      # 카탈로그 CRUD API
+│   │   ├── items.py         # 아이템 CRUD API
+│   │   ├── upload.py        # 파일 업로드 API
+│   │   └── user_catalogs.py # 사용자 카탈로그 관리 API
+│   ├── models/              # 데이터베이스 모델 (SQLAlchemy)
+│   │   ├── __init__.py
+│   │   └── database.py      # DB 모델 및 세션 관리
+│   ├── schemas/             # Pydantic 스키마 (요청/응답 검증)
+│   │   ├── __init__.py
+│   │   ├── catalog.py       # 카탈로그 스키마
+│   │   ├── item.py          # 아이템 스키마
+│   │   ├── user_catalog.py  # 사용자 카탈로그 스키마
+│   │   ├── user_item.py     # 사용자 아이템 스키마
+│   │   └── common.py        # 공통 스키마
+│   └── crud/                # CRUD 작업 로직
 │       ├── __init__.py
-│       ├── catalogs.py      # 카탈로그 API
-│       ├── items.py         # 아이템 API
-│       └── upload.py        # 파일 업로드 API
+│       ├── catalog.py       # 카탈로그 CRUD
+│       ├── item.py          # 아이템 CRUD
+│       └── user_catalog.py  # 사용자 카탈로그 CRUD
 ├── requirements.txt         # Python 의존성
 ├── Dockerfile              # Docker 컨테이너 설정
 ├── .dockerignore           # Docker 빌드 제외 파일
-└── api_communication.log   # 통신 로그
+├── api_communication.log   # 통신 로그
+├── README.md               # 프로젝트 문서
+├── MIGRATION_GUIDE.md      # 마이그레이션 가이드
+├── STRUCTURE.md            # 구조 다이어그램
+└── uploads/                # 업로드된 이미지 파일
 ```
 
-### 2. 서버가 관리하는 정보
+### 2. 카탈로그 API 실행 흐름
+
+#### 서버 시작
+```
+main.py 실행 (또는 app/main.py)
+  ↓
+FastAPI 앱 생성 (app/main.py)
+  - CORS 미들웨어 등록 (모든 Origin 허용)
+  - 로깅 미들웨어 등록 (요청/응답 자동 로깅)
+  - 정적 파일 서빙 설정 (/uploads)
+  ↓
+라우터 등록
+  - /api/catalogs (app/api/catalogs.py)
+  - /api/items (app/api/items.py)
+  - /api/user-catalogs (app/api/user_catalogs.py)
+  - /api/upload (app/api/upload.py)
+  ↓
+startup 이벤트: init_db()
+  - SQLite 데이터베이스 테이블 생성
+  ↓
+uvicorn 서버 시작 (포트 8002)
+```
+
+#### 내 카탈로그 조회 플로우
+```
+Flutter → GET /api/user-catalogs/my-catalogs
+  Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+  ↓
+get_current_user_id() (Depends)
+  - Authorization 헤더에서 토큰 추출
+  - JWT 검증 (user-api와 동일한 시크릿 키)
+  - 토큰에서 user_id 추출
+  ↓
+get_my_catalogs(user_id)
+  - 해당 사용자 소유 카탈로그 조회
+  - 각 카탈로그의 아이템 통계 계산
+    * item_count: 전체 아이템 수
+    * owned_count: 보유 아이템 수 (user_item_status 테이블)
+    * completion_rate: (owned_count / item_count) * 100
+  - original_catalog_id 포함 (복사본인 경우)
+  ↓
+JSON 응답 반환
+```
+
+#### 카탈로그 저장 (복사) 플로우
+```
+Flutter → POST /api/user-catalogs/save-catalog
+  Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+  { "catalog_id": "original-uuid" }
+  ↓
+save_catalog(request, user_id)
+  ↓
+1. 원본 카탈로그 존재 확인
+2. 자신의 카탈로그인지 확인 (자신 것은 저장 불가)
+3. 이미 저장했는지 확인 (중복 저장 방지)
+  ↓
+4. 카탈로그 완전 복사본 생성
+   - 새 UUID 생성
+   - user_id를 현재 사용자로 설정
+   - visibility를 "private"로 설정
+  ↓
+5. 원본 카탈로그의 모든 아이템 복사
+   - 각 아이템마다 새 UUID 생성
+   - catalog_id를 복사본 ID로 설정
+   - user_item_status 생성 (owned=False)
+  ↓
+6. user_catalogs 테이블에 관계 저장
+   - original_catalog_id: 원본 ID
+   - copied_catalog_id: 복사본 ID
+  ↓
+복사본 카탈로그 ID 반환
+```
+
+#### 아이템 보유 상태 토글 플로우
+```
+Flutter → PATCH /api/items/{item_id}/toggle-owned
+  Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+  ↓
+toggle_item_owned(item_id, user_id)
+  ↓
+1. 아이템 존재 확인
+2. 카탈로그 소유자 확인 (권한 검증)
+  ↓
+3. user_item_status 조회 또는 생성
+4. owned 필드 토글 (True ↔ False)
+5. updated_at 갱신
+  ↓
+업데이트된 아이템 정보 반환
+  ↓
+Flutter에서 수집률 자동 재계산
+```
 
 #### 데이터베이스 모델 (SQLAlchemy)
 ```python
@@ -298,10 +587,10 @@ class CatalogDB(Base):
     description = Column(Text, nullable=False)       # 설명
     category = Column(String, default="미분류")       # 카테고리
     tags = Column(JSON, default=list)               # 태그 (JSON 배열)
-    visibility = Column(String, default="public")   # 공개 여부
+    visibility = Column(String, default="public")   # public/private
     thumbnail_url = Column(String, nullable=True)   # 썸네일 URL
-    created_at = Column(DateTime, default=func.now()) # 생성일 (자동)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now()) # 수정일 (자동)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class ItemDB(Base):
     __tablename__ = "items"
@@ -311,24 +600,69 @@ class ItemDB(Base):
     name = Column(String, nullable=False)            # 아이템명
     description = Column(Text, nullable=False)       # 설명
     image_url = Column(String, nullable=True)        # 이미지 URL
-    owned = Column(Boolean, default=False)           # 보유 여부
     user_fields = Column(JSON, default=dict)         # 사용자 정의 필드 (JSON)
-    created_at = Column(DateTime, default=func.now()) # 생성일 (자동)
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now()) # 수정일 (자동)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+class UserItemStatusDB(Base):
+    __tablename__ = "user_item_status"
+    
+    user_id = Column(String, primary_key=True)       # 사용자 ID
+    item_id = Column(String, primary_key=True)       # 아이템 ID
+    owned = Column(Boolean, default=False)           # 보유 여부
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+class UserCatalogDB(Base):
+    __tablename__ = "user_catalogs"
+    
+    user_id = Column(String, primary_key=True)       # 사용자 ID
+    original_catalog_id = Column(String, primary_key=True)  # 원본 카탈로그 ID
+    copied_catalog_id = Column(String)               # 복사본 카탈로그 ID
+    saved_at = Column(DateTime, default=func.now())
 ```
 
-#### 비즈니스 로직
+#### JWT 검증 유틸리티
 ```python
-# 수집률 실시간 계산
-def calculate_completion_rate(catalog_id):
-    items = db.query(ItemDB).filter(ItemDB.catalog_id == catalog_id).all()
-    item_count = len(items)
-    owned_count = sum(1 for item in items if item.owned)
-    return (owned_count / item_count * 100) if item_count > 0 else 0
+# app/core/security.py
+async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
+    """JWT 토큰에서 사용자 ID 추출 (필수 인증)"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="인증 토큰이 필요합니다")
+    
+    token = authorization.split(" ")[1]
+    
+    try:
+        # user-api와 동일한 시크릿 키로 검증
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="유효하지 않은 토큰")
+        return str(user_id)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="토큰이 만료되었습니다")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰")
 
-# 사용자별 데이터 격리
-def get_user_catalogs(user_id):
-    return db.query(CatalogDB).filter(CatalogDB.user_id == user_id).all()
+async def get_optional_user_id(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    """JWT 토큰에서 사용자 ID 추출 (선택적 인증)"""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        try:
+            payload = jwt.decode(
+                token, 
+                settings.JWT_SECRET_KEY, 
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            user_id = payload.get("sub")
+            return str(user_id) if user_id else None
+        except jwt.PyJWTError:
+            return None
+    return None
 ```
 
 ## 클라이언트-서버 통신
@@ -367,42 +701,72 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 #### 회원 API (Spring Boot - 포트 8081)
 ```
 # 인증 관련
-GET  /api/auth/login/{provider}     # OAuth2 로그인 URL 조회
-POST /api/auth/logout               # 로그아웃
+POST /api/auth/dev-login            # 개발용 간편 로그인 (JWT 발급)
+  요청: { "email": "user@example.com", "nickname": "사용자" }
+  응답: { "accessToken": "eyJ...", "user": {...} }
 
-# 사용자 관리
+# 사용자 관리 (JWT 필수)
 GET  /api/users/me                  # 현재 사용자 정보 조회
+  헤더: Authorization: Bearer {JWT}
+  응답: { "userId": "1", "email": "...", "nickname": "..." }
+
 PUT  /api/users/me                  # 사용자 정보 수정
+  헤더: Authorization: Bearer {JWT}
+  요청: { "nickname": "새닉네임", "introduction": "..." }
+
 DELETE /api/users/me                # 회원 탈퇴
-GET  /api/users/{userId}            # 특정 사용자 조회
-
-# 개발/테스트용
-GET  /api/test/health               # 서버 상태 확인
-POST /api/test/create-token         # 테스트용 JWT 토큰 생성
-POST /api/test/validate-token       # JWT 토큰 검증
-POST /api/dev/create-user           # 개발용 사용자 생성
+  헤더: Authorization: Bearer {JWT}
 ```
 
-#### 카탈로그 API (FastAPI - 포트 8000)
+#### 카탈로그 API (FastAPI - 포트 8002)
 ```
-# 카탈로그 관리
-GET  /api/catalogs/                 # 카탈로그 목록 조회
-GET  /api/catalogs/{catalog_id}     # 특정 카탈로그 조회
+# 사용자 카탈로그 관리 (JWT 필수)
+GET  /api/user-catalogs/my-catalogs # 내 카탈로그 목록 (생성+저장)
+  헤더: Authorization: Bearer {JWT}
+  응답: [{ catalog_id, title, completion_rate, original_catalog_id, ... }]
+
+POST /api/user-catalogs/save-catalog # 카탈로그 저장 (복사)
+  헤더: Authorization: Bearer {JWT}
+  요청: { "catalog_id": "원본-uuid" }
+  응답: { "copied_catalog_id": "복사본-uuid" }
+
+GET  /api/user-catalogs/check-ownership/{catalog_id} # 소유권 확인
+GET  /api/user-catalogs/check-saved/{original_catalog_id} # 저장 여부 확인
+
+# 카탈로그 관리 (JWT 필수)
+GET  /api/catalogs/public           # 공개 카탈로그 목록
+  쿼리: ?category=피규어&user_id=1
+  응답: [{ catalog_id, title, ... }]
+
+GET  /api/catalogs/{catalog_id}     # 카탈로그 상세 조회
 POST /api/catalogs/                 # 카탈로그 생성
+  헤더: Authorization: Bearer {JWT}
+  요청: { "title": "...", "description": "...", "category": "..." }
+
 PUT  /api/catalogs/{catalog_id}     # 카탈로그 수정
 DELETE /api/catalogs/{catalog_id}   # 카탈로그 삭제
 
-# 아이템 관리
-GET  /api/items/catalog/{catalog_id} # 카탈로그의 아이템 목록
-GET  /api/items/{item_id}           # 특정 아이템 조회
+# 아이템 관리 (JWT 필수)
+GET  /api/items/catalog/{catalog_id} # 아이템 목록
+  쿼리: ?owned=true (보유 아이템만)
+  응답: [{ item_id, name, owned, ... }]
+
+GET  /api/items/{item_id}           # 아이템 상세
 POST /api/items/                    # 아이템 생성
+  요청: { "catalog_id": "...", "name": "...", "description": "..." }
+
 PUT  /api/items/{item_id}           # 아이템 수정
-PATCH /api/items/{item_id}/toggle-owned # 보유 여부 토글
+PATCH /api/items/{item_id}/toggle-owned # 보유 상태 토글 (핵심 기능)
+  헤더: Authorization: Bearer {JWT}
+  응답: { "item_id": "...", "owned": true }
+
 DELETE /api/items/{item_id}         # 아이템 삭제
 
 # 파일 업로드
-POST /api/upload/file               # 이미지 파일 업로드
-DELETE /api/upload/file             # 파일 삭제
+POST /api/upload/file               # 이미지 업로드
+  헤더: Authorization: Bearer {JWT}
+  요청: multipart/form-data (file)
+  응답: { "file_url": "/uploads/..." }
 ```
 
 ### 4. 요청-응답 패턴
@@ -474,114 +838,296 @@ Content-Type: application/json
 }
 ```
 
-### 3. 데이터 변환 과정
+### 3. API 통신 구조
 
-#### 클라이언트 → 서버
+#### ApiService 플랫폼별 URL 설정
 ```dart
-// 1. Dart 객체 생성
-final catalogCreate = CatalogCreate(
-  title: "테스트",
-  description: "테스트 설명"
-);
-
-// 2. JSON 직렬화
-final jsonData = catalogCreate.toJson();
-
-// 3. HTTP 요청
-final response = await http.post(
-  Uri.parse('$baseUrl/catalogs/'),
-  headers: {'Content-Type': 'application/json'},
-  body: json.encode(jsonData),
-);
+class ApiService {
+  // Catalog API 베이스 URL (플랫폼별 자동 설정)
+  static String get catalogApiBaseUrl {
+    if (kIsWeb) return 'http://localhost:8002';           // 웹
+    else if (Platform.isAndroid) return 'http://10.0.2.2:8002';  // 안드로이드
+    else if (Platform.isIOS) return 'http://localhost:8002';     // iOS
+    else return 'http://localhost:8002';                  // 기타
+  }
+  
+  // User API 베이스 URL
+  static String get userApiBaseUrl {
+    if (kIsWeb) return 'http://localhost:8081';
+    else if (Platform.isAndroid) return 'http://10.0.2.2:8081';
+    else if (Platform.isIOS) return 'http://localhost:8081';
+    else return 'http://localhost:8081';
+  }
+  
+  // JWT 토큰 저장
+  String? _token;
+  
+  void setToken(String? token) {
+    _token = token;
+  }
+  
+  // HTTP 요청 헤더 (JWT 토큰 자동 포함)
+  Map<String, String> get _headers => {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Accept': 'application/json; charset=utf-8',
+    if (_token != null) 'Authorization': 'Bearer $_token',
+  };
+}
 ```
 
-#### 서버 → 클라이언트
+#### 데이터 변환 과정
+
+**클라이언트 → 서버 (카탈로그 생성)**
+```dart
+// 1. API 호출
+await apiService.createCatalog(
+  title: "내 피규어 컬렉션",
+  description: "애니메이션 피규어 모음",
+  category: "피규어",
+  tags: ["애니메이션", "수집"],
+);
+
+// 2. HTTP 요청 생성
+final response = await http.post(
+  Uri.parse('$catalogApiBaseUrl/api/catalogs/'),
+  headers: _headers,  // JWT 토큰 포함
+  body: utf8.encode(jsonEncode({
+    'title': title,
+    'description': description,
+    'category': category,
+    'tags': tags,
+    'visibility': 'public',
+  })),
+);
+
+// 3. 응답 처리
+if (response.statusCode == 201) {
+  return jsonDecode(utf8.decode(response.bodyBytes));
+}
+```
+
+**서버 → 클라이언트 (카탈로그 반환)**
 ```python
 # 1. Pydantic 모델 검증
-catalog_create = CatalogCreate(**request_data)
-
-# 2. 데이터베이스 저장
-catalog_record = CatalogDB(
-    catalog_id=str(uuid.uuid4()),
-    user_id=user_id,
-    **catalog_create.dict()
-)
-db.add(catalog_record)
-db.commit()
-
-# 3. 응답 모델 생성
-catalog_response = Catalog(
-    **catalog_record.__dict__,
-    item_count=0,
-    owned_count=0,
-    completion_rate=0.0
-)
-
-# 4. JSON 응답
-return catalog_response
+@router.post("/", response_model=Catalog)
+async def create_catalog(
+    catalog: CatalogCreate,
+    user_id: str = Depends(get_current_user_id)
+):
+    # 2. 데이터베이스 저장
+    catalog_id = str(uuid.uuid4())
+    catalog_record = CatalogDB(
+        catalog_id=catalog_id,
+        user_id=user_id,
+        title=catalog.title,
+        description=catalog.description,
+        category=catalog.category,
+        tags=catalog.tags,
+        visibility=catalog.visibility,
+    )
+    db.add(catalog_record)
+    db.commit()
+    
+    # 3. 응답 모델 생성 (수집률 포함)
+    return Catalog(
+        catalog_id=catalog_id,
+        user_id=user_id,
+        title=catalog.title,
+        description=catalog.description,
+        category=catalog.category,
+        tags=catalog.tags,
+        visibility=catalog.visibility,
+        thumbnail_url=None,
+        created_at=catalog_record.created_at.isoformat(),
+        updated_at=catalog_record.updated_at.isoformat(),
+        item_count=0,
+        owned_count=0,
+        completion_rate=0.0,
+    )
 ```
 
-## 데이터 흐름
+## 전체 데이터 흐름
 
-### 1. 사용자 로그인 및 인증
+### 1. 앱 시작 및 자동 로그인
 ```
-1. 사용자가 로그인 버튼 클릭 (Google/Naver)
-2. AuthProvider.login() 호출
-3. ApiService.getLoginUrl() → GET /api/auth/login/{provider}
-4. 회원 API에서 OAuth2 로그인 URL 반환
-5. 브라우저에서 OAuth2 제공자 페이지로 리다이렉트
-6. 사용자 인증 완료 후 콜백 URL로 리다이렉트
-7. OAuth2SuccessHandler에서 사용자 정보 처리
-8. JWT 토큰 생성 및 사용자 정보와 함께 응답
-9. 클라이언트에서 토큰 저장 (로컬 스토리지)
-10. 이후 모든 API 호출 시 Authorization 헤더에 토큰 포함
-```
-
-### 2. 카탈로그 목록 조회 (인증 후)
-```
-1. 사용자가 홈 화면 진입
-2. CatalogProvider.loadCatalogs() 호출
-3. ApiService.getCatalogs() → GET /api/catalogs/ (JWT 토큰 포함)
-4. 카탈로그 API에서 JWT 토큰 검증 및 사용자 ID 추출
-5. 해당 사용자의 카탈로그만 필터링하여 조회
-6. 각 카탈로그의 아이템 통계 실시간 계산
-7. JSON 응답을 Catalog 객체로 변환
-8. Provider 상태 업데이트
-9. UI 자동 갱신
+앱 실행 (main.dart)
+  ↓
+GetX 컨트롤러 초기화
+  - AuthController.onInit()
+    * SharedPreferences에서 JWT 토큰 로드
+    * 토큰 있으면 ApiService.setToken()
+  - CatalogController 초기화
+  ↓
+SplashScreen 표시 (3초)
+  - 로고 애니메이션
+  - AuthController.loadUser() 호출
+    * user-api에 GET /api/users/me 요청
+    * JWT 토큰으로 사용자 정보 조회
+  ↓
+화면 전환
+  - 토큰 유효 → HomeScreen
+  - 토큰 없음/만료 → LoginScreen
 ```
 
-### 3. 아이템 보유 상태 토글 및 실시간 수집률 업데이트 (인증 필요)
+### 2. 개발용 로그인 플로우
 ```
-1. 사용자가 아이템의 스위치 터치
-2. ItemProvider.toggleItemOwned() 호출
-3. ApiService.toggleItemOwned() → PATCH /api/items/{id}/toggle-owned (JWT 토큰 포함)
-4. 카탈로그 API에서 JWT 토큰 검증 및 권한 확인
-5. 해당 사용자의 아이템인지 확인 (카탈로그 소유자 검증)
-6. owned 필드 토글 및 updated_at 갱신
-7. 업데이트된 아이템 정보 응답
-8. ItemProvider 상태 업데이트
-9. ItemProvider가 CatalogProvider.onItemChanged() 콜백 호출
-10. CatalogProvider.updateCatalogCompletionRate() 실행
-11. 서버에서 최신 카탈로그 정보 (수집률 포함) 가져오기
-12. UI 자동 업데이트 (Consumer<CatalogProvider> 감지)
-13. 애니메이션과 함께 수집률 실시간 반영
+LoginScreen
+  ↓
+사용자 입력 (이메일, 닉네임)
+  ↓
+AuthController.devLogin()
+  ↓
+ApiService.devLogin()
+  → POST /api/auth/dev-login (user-api:8081)
+  ↓
+Spring Boot AuthController
+  - UserService.findOrCreateDevUser()
+  - JwtTokenProvider.createToken(userId)
+  ↓
+응답: { accessToken, user }
+  ↓
+AuthController
+  - SharedPreferences에 토큰 저장
+  - _user 상태 업데이트
+  - CatalogController.setApiToken() 호출
+  ↓
+HomeScreen으로 이동
 ```
 
-### 4. 마이크로서비스 간 JWT 토큰 통신 (✅ 구현 완료)
+### 3. 내 카탈로그 목록 조회
 ```
-실제 통신 플로우:
+HomeScreen 진입
+  ↓
+CatalogController.loadMyCatalogs()
+  ↓
+ApiService.getMyCatalogs()
+  → GET /api/user-catalogs/my-catalogs (catalog-api:8002)
+  → Authorization: Bearer {JWT}
+  ↓
+FastAPI app/api/user_catalogs.py
+  - get_current_user_id() (JWT 검증 - app/core/security.py)
+  - 사용자 소유 카탈로그 조회
+  - 각 카탈로그의 수집률 계산
+    * 전체 아이템 수
+    * 보유 아이템 수 (user_item_status 테이블)
+    * completion_rate = (owned / total) * 100
+  ↓
+응답: [{ catalog_id, title, completion_rate, ... }]
+  ↓
+CatalogController
+  - _myCatalogs 상태 업데이트
+  - UI 자동 갱신 (Obx 위젯)
+```
 
-1. Flutter → Spring Boot: 사용자 생성/로그인 요청
-2. Spring Boot → Flutter: JWT 토큰 발급 (HS256, 24시간 유효)
-3. Flutter → FastAPI: JWT 토큰을 Authorization 헤더에 포함하여 API 호출
-4. FastAPI: 동일한 시크릿 키로 JWT 토큰 검증
-5. FastAPI: 토큰에서 사용자 ID 추출 후 해당 사용자 데이터만 처리
-6. 사용자별 데이터 격리 완전 보장
+### 4. 공개 카탈로그 탐색 및 저장
+```
+ExploreScreen 진입
+  ↓
+CatalogController.loadPublicCatalogs()
+  ↓
+ApiService.getPublicCatalogs()
+  → GET /api/catalogs/public (catalog-api:8002)
+  ↓
+FastAPI app/api/catalogs.py
+  - 공개 카탈로그 조회 (visibility="public")
+  - 로그인한 경우 자신의 카탈로그 제외
+  ↓
+사용자가 카탈로그 선택 → CatalogDetailScreen
+  ↓
+"저장" 버튼 클릭
+  ↓
+CatalogController.saveCatalog(catalogId)
+  ↓
+ApiService.saveCatalog(catalogId)
+  → POST /api/user-catalogs/save-catalog (catalog-api:8002)
+  → Authorization: Bearer {JWT}
+  ↓
+FastAPI app/api/user_catalogs.py
+  - 원본 카탈로그 조회
+  - 자신의 카탈로그인지 확인
+  - 이미 저장했는지 확인
+  - 카탈로그 완전 복사본 생성
+    * 새 catalog_id 생성
+    * user_id를 현재 사용자로 설정
+    * 모든 아이템 복사
+    * user_item_status 생성 (owned=False)
+  - user_catalogs 테이블에 관계 저장
+  ↓
+응답: { copied_catalog_id }
+  ↓
+CatalogController.loadMyCatalogs() 재호출
+  - 내 카탈로그 목록에 복사본 추가됨
+```
 
-JWT 설정 (두 서버 동일):
-- 시크릿 키: "mySecretKey1234567890123456789012345678901234567890"
-- 알고리즘: HS256
-- 만료 시간: 24시간
+### 5. 아이템 보유 상태 토글 및 수집률 업데이트
+```
+CatalogDetailScreen
+  ↓
+사용자가 아이템 체크박스 클릭
+  ↓
+ApiService.toggleItemOwned(itemId)
+  → PATCH /api/items/{itemId}/toggle-owned (catalog-api:8002)
+  → Authorization: Bearer {JWT}
+  ↓
+FastAPI app/api/items.py
+  - get_current_user_id() (JWT 검증 - app/core/security.py)
+  - 아이템 조회
+  - 카탈로그 소유자 확인 (권한 검증)
+  - user_item_status 조회 또는 생성
+  - owned 필드 토글 (True ↔ False)
+  ↓
+응답: { item_id, owned, ... }
+  ↓
+CatalogDetailScreen
+  - 아이템 목록 상태 업데이트
+  - 수집률 자동 재계산
+    * owned_count 업데이트
+    * completion_rate 재계산
+  - UI 실시간 반영
+```
+
+### 6. JWT 토큰 기반 마이크로서비스 통신
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Flutter App                          │
+│  - SharedPreferences에 JWT 토큰 저장                     │
+│  - 모든 API 요청에 Authorization 헤더 자동 포함          │
+└─────────────────────────────────────────────────────────┘
+                    │                    │
+                    │                    │
+        ┌───────────┘                    └───────────┐
+        │                                            │
+        ▼                                            ▼
+┌──────────────────┐                      ┌──────────────────┐
+│   user-api       │                      │  catalog-api     │
+│  (Spring Boot)   │                      │   (FastAPI)      │
+│                  │                      │                  │
+│ JWT 토큰 발급    │                      │ JWT 토큰 검증    │
+│ - createToken()  │                      │ - jwt.decode()   │
+│ - HS256          │                      │ - HS256          │
+│ - 24시간 유효    │                      │ - user_id 추출   │
+│                  │                      │                  │
+│ 시크릿 키:       │◄────동일 키────────►│ 시크릿 키:       │
+│ "mySecretKey..." │                      │ "mySecretKey..." │
+└──────────────────┘                      └──────────────────┘
+        │                                            │
+        ▼                                            ▼
+┌──────────────────┐                      ┌──────────────────┐
+│   H2 Database    │                      │ SQLite Database  │
+│  - users 테이블  │                      │ - catalogs       │
+│                  │                      │ - items          │
+│                  │                      │ - user_item_status│
+│                  │                      │ - user_catalogs  │
+└──────────────────┘                      └──────────────────┘
+
+통신 흐름:
+1. Flutter → user-api: 로그인 요청
+2. user-api → Flutter: JWT 토큰 발급
+3. Flutter → catalog-api: JWT 토큰 포함하여 API 호출
+4. catalog-api: 동일한 시크릿 키로 토큰 검증
+5. catalog-api: 토큰에서 user_id 추출
+6. catalog-api: 해당 사용자 데이터만 처리
+7. 사용자별 데이터 격리 완전 보장
 ```
 
 ## 배포 및 운영
@@ -600,35 +1146,39 @@ cd be/user-api
 curl http://localhost:8081/api/test/health
 ```
 
-#### 카탈로그 API (FastAPI + Docker) - 포트 8000
+#### 카탈로그 API (FastAPI + Docker) - 포트 8002
 ```bash
 # Docker 이미지 빌드
 cd be/catalog-api
 docker build -t catalog-api .
 
 # 컨테이너 실행
-docker run -p 8000:8000 catalog-api
+docker run -p 8002:8002 catalog-api
 
 # 서버 실행 확인
-curl http://localhost:8000/docs
+curl http://localhost:8002/docs
+curl http://localhost:8002/health
 ```
 
-#### Flutter 클라이언트 - 포트 3000
+#### Flutter 클라이언트
 ```bash
 # 프로젝트 디렉토리로 이동
 cd fe
 
 # 의존성 설치
-flutter packages get
+flutter pub get
 
-# JSON 직렬화 코드 생성
-flutter packages pub run build_runner build
+# 웹 실행
+flutter run -d chrome
 
-# 웹 서버로 실행
-flutter run -d web-server --web-port 3000
+# 모바일 실행 (iOS)
+flutter run -d ios
 
-# 브라우저에서 접속
-open http://localhost:3000
+# 모바일 실행 (Android)
+flutter run -d android
+
+# macOS 데스크톱 실행
+flutter run -d macos
 ```
 
 ### 2. Docker 컨테이너화
@@ -647,10 +1197,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 앱 코드 복사 및 설정
 COPY . .
 RUN mkdir -p uploads
-EXPOSE 8000
+EXPOSE 8002
 
 # 개발 환경용 실행 (reload 옵션)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
 ```
 
 #### 회원 API 실행 방식
@@ -683,10 +1233,11 @@ java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
 ## 성능 최적화
 
 ### 1. 클라이언트 최적화
-- **상태 캐싱**: Provider로 API 응답 캐시
-- **JWT 토큰 관리**: 로컬 스토리지에 토큰 저장, 자동 갱신
+- **상태 캐싱**: GetX 반응형 상태 관리로 API 응답 캐시
+- **JWT 토큰 관리**: SharedPreferences에 토큰 저장, 자동 로그인
 - **지연 로딩**: 필요한 화면에서만 데이터 로드
-- **에러 처리**: 네트워크 오류 시 재시도 로직, 토큰 만료 시 자동 로그인
+- **에러 처리**: 네트워크 오류 시 재시도 로직, 토큰 만료 시 자동 로그아웃
+- **플랫폼별 URL**: 웹/안드로이드/iOS 자동 감지 및 적절한 API URL 사용
 
 ### 2. 회원 API 최적화 (Spring Boot)
 - **JWT 토큰**: Stateless 인증으로 서버 부하 감소
@@ -701,15 +1252,19 @@ java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
 - **데이터베이스 인덱스**: user_id, catalog_id에 인덱스 설정
 - **실시간 계산**: 수집률을 매번 계산하여 최신 상태 보장
 - **JSON 필드**: 태그와 사용자 정의 필드를 JSON으로 저장
+- **사용자별 아이템 상태**: user_item_status 테이블로 다중 사용자 지원
+- **카탈로그 복사**: 완전 복사본 생성으로 독립적인 수집 관리
 
 ### 4. 통신 최적화
 - **HTTP Keep-Alive**: 연결 재사용
 - **JWT 토큰**: 세션 대신 토큰 기반 인증으로 서버 부하 감소
 - **JSON 압축**: 자동 gzip 압축
+- **UTF-8 인코딩**: 한글 등 유니코드 문자 정상 처리
 - **응답 시간**: 
-  - 회원 API: 평균 5-20ms (인메모리 DB)
-  - 카탈로그 API: 평균 10-40ms
+  - 회원 API: 평균 5-20ms (H2 인메모리 DB)
+  - 카탈로그 API: 평균 10-50ms (SQLite)
 - **마이크로서비스**: 기능별 서버 분리로 확장성 향상
+- **로깅 미들웨어**: 모든 API 요청/응답 자동 로깅 (디버깅 용이)
 
 ## 보안 고려사항
 
@@ -746,24 +1301,72 @@ java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
 ## 현재 구현 상태
 
 ### ✅ 완료된 기능
-- **회원 API (Spring Boot)**: JWT 인증, OAuth2 준비, 사용자 CRUD
-- **카탈로그 API (FastAPI)**: 카탈로그/아이템 CRUD, 이미지 업로드, JWT 토큰 검증
-- **Flutter 클라이언트**: 완전한 사용자 플로우 구현 (스플래시 → 네비게이션 → 상세)
-- **JWT 통합 인증**: 두 API 서버 간 토큰 공유 및 검증 완료
-- **실시간 수집률 반영**: Provider 간 통신으로 아이템 변경 시 즉시 수집률 업데이트
-- **애니메이션 시스템**: 스플래시, Hero, 수집 완료 애니메이션 구현
-- **하단 네비게이션**: 홈/탐색/추가/마이 4개 탭 구조
-- **검색 및 필터링**: 카탈로그 탐색 기능 완성
-- **로컬 개발 환경**: 세 서비스 모두 실행 중 (포트 8081, 8000, 3000)
-- **통신 로깅**: 모든 API 요청/응답 상세 로깅
 
-### 🚧 진행 중/향후 계획
-- **OAuth2 실제 연동**: Google, Naver 클라이언트 설정 (UI는 준비 완료)
+#### 백엔드
+- **회원 API (Spring Boot)**: 
+  - JWT 토큰 발급 및 검증 (HS256, 24시간)
+  - 개발용 간편 로그인 (이메일/닉네임)
+  - 사용자 CRUD (조회, 수정, 삭제)
+  - H2 인메모리 데이터베이스
+  - CORS 설정
+
+- **카탈로그 API (FastAPI)**:
+  - 표준 FastAPI 프로젝트 구조로 재구성
+    * app/core/: 설정, 보안, 미들웨어
+    * app/api/: API 라우터 (엔드포인트)
+    * app/models/: SQLAlchemy DB 모델
+    * app/schemas/: Pydantic 스키마 (요청/응답 검증)
+    * app/crud/: CRUD 작업 로직
+  - 카탈로그 CRUD (생성, 조회, 수정, 삭제)
+  - 아이템 CRUD 및 보유 상태 토글
+  - 사용자별 아이템 상태 관리 (user_item_status)
+  - 카탈로그 저장 기능 (완전 복사본 생성)
+  - 공개/비공개 카탈로그 관리
+  - 실시간 수집률 계산
+  - 이미지 업로드 및 정적 파일 서빙
+  - JWT 토큰 검증 (user-api와 동일한 시크릿)
+  - SQLite 데이터베이스
+  - 요청/응답 로깅 미들웨어
+  - Docker 컨테이너화
+  - 환경 변수 관리 (.env)
+
+#### 프론트엔드
+- **Flutter 앱**:
+  - GetX 상태 관리 (AuthController, CatalogController)
+  - 자동 로그인 (SharedPreferences)
+  - 스플래시 화면 (애니메이션)
+  - 개발용 로그인 화면
+  - 홈 화면 (내 카탈로그 목록)
+  - 탐색 화면 (공개 카탈로그)
+  - 카탈로그 상세 화면
+  - 아이템 상세 화면
+  - 아이템 추가 화면
+  - 프로필 화면
+  - 카탈로그 저장 기능
+  - 아이템 보유 상태 토글
+  - 실시간 수집률 표시
+  - 플랫폼별 API URL 자동 설정 (웹/안드로이드/iOS)
+  - UTF-8 인코딩 지원 (한글 처리)
+
+#### 통합
+- **JWT 기반 마이크로서비스 인증**:
+  - user-api에서 토큰 발급
+  - catalog-api에서 토큰 검증
+  - 사용자별 데이터 격리 완전 보장
+  - 두 서버 간 동일한 시크릿 키 사용
+
+- **로컬 개발 환경**:
+  - user-api: 포트 8081
+  - catalog-api: 포트 8002 (Docker)
+  - Flutter: 웹/모바일/데스크톱 지원
+
+### 🚧 향후 계획
+- **OAuth2 실제 연동**: Google, Naver 소셜 로그인
 - **프로덕션 배포**: AWS 환경, ALB 라우팅, RDS/DynamoDB 연동
-- **오프라인 동기화**: SQLite 로컬 캐시 및 서버 동기화
-- **고급 애니메이션**: 파티클 효과, 마이크로 인터랙션 추가
-- **푸시 알림**: 수집 목표 달성 알림
-- **소셜 기능**: 카탈로그 공유, 친구 기능
+- **이미지 최적화**: S3 업로드, CloudFront CDN
+- **검색 기능**: 카탈로그/아이템 전체 검색
+- **알림 기능**: 수집 목표 달성 알림
+- **소셜 기능**: 카탈로그 공유, 팔로우 시스템
 
 이 아키텍처는 마이크로서비스 패턴을 기반으로 확장 가능하고 유지보수가 용이하도록 설계되었으며, 
 각 서비스의 독립성과 클라이언트-서버 간의 명확한 책임 분리를 통해 안정적인 통신을 보장합니다.

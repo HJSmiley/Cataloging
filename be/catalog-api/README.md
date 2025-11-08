@@ -1,213 +1,179 @@
-# 카탈로그 API (FastAPI + SQLite)
+# Catalog API
 
-수집가를 위한 카탈로그 및 아이템 관리 API 서버입니다.
+카탈로그 및 아이템 관리를 위한 FastAPI 기반 백엔드 서비스
 
-## 기능
+## 프로젝트 구조
 
-- 카탈로그 CRUD (생성, 조회, 수정, 삭제)
-- 아이템 CRUD (생성, 조회, 수정, 삭제)
-- 아이템 보유 여부 토글
-- 로컬 파일 시스템 이미지 업로드
-- 수집률 자동 계산
+```
+catalog-api/
+├── app/
+│   ├── main.py              # FastAPI 엔트리포인트
+│   ├── core/                # 설정 및 유틸리티
+│   │   ├── __init__.py
+│   │   ├── config.py        # 환경 설정
+│   │   ├── security.py      # JWT 인증
+│   │   └── middleware.py    # HTTP 미들웨어
+│   ├── api/                 # 라우터/엔드포인트
+│   │   ├── __init__.py
+│   │   ├── catalogs.py      # 카탈로그 API
+│   │   ├── items.py         # 아이템 API
+│   │   ├── upload.py        # 파일 업로드 API
+│   │   └── user_catalogs.py # 사용자 카탈로그 API
+│   ├── models/              # DB 모델 (SQLAlchemy)
+│   │   ├── __init__.py
+│   │   └── database.py      # 데이터베이스 모델
+│   ├── schemas/             # Pydantic 스키마
+│   │   ├── __init__.py
+│   │   ├── catalog.py       # 카탈로그 스키마
+│   │   ├── item.py          # 아이템 스키마
+│   │   ├── user_catalog.py  # 사용자 카탈로그 스키마
+│   │   ├── user_item.py     # 사용자 아이템 스키마
+│   │   └── common.py        # 공통 스키마
+│   └── crud/                # DB CRUD 로직
+│       ├── __init__.py
+│       ├── catalog.py       # 카탈로그 CRUD
+│       ├── item.py          # 아이템 CRUD
+│       └── user_catalog.py  # 사용자 카탈로그 CRUD
+├── .env                     # 환경 변수 파일
+├── .env.example             # 환경 변수 예시
+├── main.py                  # 하위 호환성을 위한 엔트리포인트
+├── requirements.txt         # Python 의존성
+├── Dockerfile               # Docker 이미지 빌드
+└── README.md                # 프로젝트 문서
 
-## 기술 스택
+```
 
-- **FastAPI**: 고성능 Python 웹 프레임워크
-- **SQLite**: 로컬 데이터베이스 (개발용)
-- **SQLAlchemy**: ORM
-- **로컬 파일 시스템**: 이미지 파일 저장
-- **JWT**: 인증 토큰
-- **Docker**: 컨테이너화 및 배포
+## 주요 기능
+
+- **카탈로그 관리**: 수집 카탈로그 생성, 조회, 수정, 삭제
+- **아이템 관리**: 카탈로그 내 아이템 CRUD 및 보유 상태 관리
+- **사용자 인증**: JWT 토큰 기반 인증 (user-api와 연동)
+- **파일 업로드**: 이미지 파일 업로드 및 서빙
+- **공개/비공개**: 카탈로그 공개 설정 및 다른 사용자 카탈로그 저장
 
 ## 설치 및 실행
 
-### 방법 1: Docker 사용 (권장)
-
-#### 1. Docker 이미지 빌드
+### 1. 의존성 설치
 
 ```bash
-# catalog-api 디렉토리로 이동
-cd be/catalog-api
-
-# Docker 이미지 빌드
-docker build -t catalog-api .
-```
-
-#### 2. Docker 컨테이너 실행
-
-```bash
-# 컨테이너 실행 (백그라운드)
-docker run -d -p 8000:8000 --name catalog-api-container catalog-api
-
-# 또는 포그라운드에서 실행 (로그 확인 가능)
-docker run -p 8000:8000 --name catalog-api-container catalog-api
-```
-
-#### 3. 컨테이너 관리
-
-```bash
-# 컨테이너 상태 확인
-docker ps
-
-# 컨테이너 로그 확인
-docker logs catalog-api-container
-
-# 컨테이너 중지
-docker stop catalog-api-container
-
-# 컨테이너 삭제
-docker rm catalog-api-container
-
-# 이미지 삭제
-docker rmi catalog-api
-```
-
-### 방법 2: 로컬 Python 환경
-
-#### 1. 가상환경 설정 및 의존성 설치
-
-```bash
-# 가상환경 생성
-python3 -m venv venv
-
-# 가상환경 활성화 (macOS/Linux)
-source venv/bin/activate
-
-# 가상환경 활성화 (Windows)
-# venv\Scripts\activate
-
-# 의존성 설치
 pip install -r requirements.txt
 ```
 
-#### 2. 환경 변수 설정 (선택사항)
+### 2. 환경 변수 설정
 
-`.env.example`을 참고하여 `.env` 파일을 생성할 수 있습니다. 기본 설정으로도 실행 가능합니다.
+`.env` 파일을 생성하고 다음 내용을 설정:
 
-```bash
-cp .env.example .env
+```env
+DATABASE_URL=sqlite:///./catalog.db
+JWT_SECRET_KEY=mySecretKey1234567890123456789012345678901234567890
+JWT_ALGORITHM=HS256
+UPLOAD_DIR=./uploads
+
+CORS_ORIGINS=*
+CORS_CREDENTIALS=true
+CORS_METHODS=*
+CORS_HEADERS=*
+
+LOG_LEVEL=INFO
+LOG_FILE=api_communication.log
 ```
 
-#### 3. 서버 실행
+### 3. 서버 실행
 
 ```bash
-# 가상환경 활성화 후 개발 서버 실행
-source venv/bin/activate
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# 또는 Python으로 직접 실행
-source venv/bin/activate
+# 개발 서버 실행
 python main.py
+
+# 또는 uvicorn 직접 실행
+uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
 ```
 
-## API 문서 확인
+서버는 `http://localhost:8002`에서 실행됩니다.
 
-서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니다:
+### 4. API 문서 확인
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: `http://localhost:8002/docs`
+- ReDoc: `http://localhost:8002/redoc`
 
 ## API 엔드포인트
 
-### 카탈로그 API
+### 카탈로그 API (`/api/catalogs`)
 
-- `GET /api/catalogs/` - 카탈로그 목록 조회
-- `GET /api/catalogs/{catalog_id}` - 특정 카탈로그 조회
-- `POST /api/catalogs/` - 카탈로그 생성
-- `PUT /api/catalogs/{catalog_id}` - 카탈로그 수정
-- `DELETE /api/catalogs/{catalog_id}` - 카탈로그 삭제
+- `GET /` - 내 카탈로그 목록 조회
+- `GET /public` - 공개 카탈로그 목록 조회
+- `GET /{catalog_id}` - 카탈로그 상세 조회
+- `POST /` - 카탈로그 생성
+- `PUT /{catalog_id}` - 카탈로그 수정
+- `DELETE /{catalog_id}` - 카탈로그 삭제
 
-### 아이템 API
+### 아이템 API (`/api/items`)
 
-- `GET /api/items/catalog/{catalog_id}` - 카탈로그의 아이템 목록 조회
-- `GET /api/items/{item_id}` - 특정 아이템 조회
-- `POST /api/items/` - 아이템 생성
-- `PUT /api/items/{item_id}` - 아이템 수정
-- `PATCH /api/items/{item_id}/toggle-owned` - 아이템 보유 여부 토글
-- `DELETE /api/items/{item_id}` - 아이템 삭제
+- `GET /catalog/{catalog_id}` - 카탈로그의 아이템 목록 조회
+- `GET /{item_id}` - 아이템 상세 조회
+- `POST /` - 아이템 생성
+- `PUT /{item_id}` - 아이템 수정
+- `PATCH /{item_id}/toggle-owned` - 아이템 보유 상태 토글
+- `DELETE /{item_id}` - 아이템 삭제
 
-### 업로드 API
+### 사용자 카탈로그 API (`/api/user-catalogs`)
 
-- `POST /api/upload/file` - 파일 업로드 (로컬 파일 시스템)
-- `DELETE /api/upload/file` - 파일 삭제
-- `GET /uploads/images/{user_id}/{year}/{month}/{day}/{filename}` - 이미지 파일 서빙
+- `GET /my-catalogs` - 내가 소유한 카탈로그 목록
+- `POST /save-catalog` - 다른 사용자의 카탈로그 저장
+- `DELETE /unsave-catalog/{catalog_id}` - 저장한 카탈로그 제거
+- `GET /check-ownership/{catalog_id}` - 카탈로그 소유권 확인
+- `GET /check-saved/{original_catalog_id}` - 카탈로그 저장 여부 확인
+
+### 파일 업로드 API (`/api/upload`)
+
+- `POST /file` - 파일 업로드
+- `DELETE /file` - 파일 삭제
 
 ## 인증
 
-현재 개발 단계에서는 다음 두 가지 방식으로 인증을 지원합니다:
+모든 API는 JWT 토큰 기반 인증을 사용합니다. 요청 헤더에 다음과 같이 토큰을 포함해야 합니다:
 
-1. **JWT 토큰** (권장): `Authorization: Bearer <token>`
-2. **개발용 사용자 ID**: `Authorization: <user_id>`
-
-## 데이터 구조
-
-### 카탈로그 (Catalog)
-
-```json
-{
-  "catalog_id": "uuid",
-  "user_id": "string",
-  "title": "string",
-  "description": "string",
-  "category": "string",
-  "tags": ["string"],
-  "visibility": "public|private",
-  "thumbnail_url": "string",
-  "created_at": "ISO datetime",
-  "updated_at": "ISO datetime",
-  "item_count": 0,
-  "owned_count": 0,
-  "completion_rate": 0.0
-}
+```
+Authorization: Bearer <JWT_TOKEN>
 ```
 
-### 아이템 (Item)
+JWT 토큰은 user-api에서 발급받아야 합니다.
 
-```json
-{
-  "item_id": "uuid",
-  "catalog_id": "uuid",
-  "name": "string",
-  "description": "string",
-  "image_url": "string",
-  "owned": false,
-  "user_fields": {
-    "key": "value"
-  },
-  "created_at": "ISO datetime",
-  "updated_at": "ISO datetime"
-}
-```
+## 데이터베이스
 
-## Docker 구성
+SQLite를 사용하며, 다음 테이블들이 자동으로 생성됩니다:
 
-### Dockerfile 특징
+- `catalogs` - 카탈로그 정보
+- `items` - 아이템 정보
+- `user_catalogs` - 사용자 카탈로그 저장 관계
+- `user_item_status` - 사용자별 아이템 보유 상태
 
-- **베이스 이미지**: `python:3.13-slim` (경량화된 Python 이미지)
-- **시스템 의존성**: gcc (Python 패키지 컴파일용)
-- **포트**: 8000번 포트 노출
-- **개발 모드**: `--reload` 옵션으로 코드 변경 시 자동 재시작
-- **볼륨**: 업로드 디렉토리 자동 생성
+## 개발
 
-### 프로덕션 배포 시 고려사항
+### 코드 구조
+
+- **app/core**: 설정, 보안, 미들웨어 등 핵심 기능
+- **app/api**: FastAPI 라우터 (엔드포인트 정의)
+- **app/models**: SQLAlchemy 데이터베이스 모델
+- **app/schemas**: Pydantic 스키마 (요청/응답 검증)
+- **app/crud**: 데이터베이스 CRUD 작업 로직
+
+### 새로운 API 추가
+
+1. `app/schemas/`에 Pydantic 스키마 정의
+2. `app/crud/`에 CRUD 함수 작성
+3. `app/api/`에 라우터 생성
+4. `app/main.py`에 라우터 등록
+
+## Docker
 
 ```bash
-# 프로덕션용 실행 (reload 옵션 제거)
-docker run -d -p 8000:8000 \
-  -v $(pwd)/uploads:/app/uploads \
-  -v $(pwd)/catalog.db:/app/catalog.db \
-  --name catalog-api-prod \
-  catalog-api
+# 이미지 빌드
+docker build -t catalog-api .
+
+# 컨테이너 실행
+docker run -p 8002:8002 catalog-api
 ```
 
-- 데이터베이스와 업로드 파일을 호스트에 마운트하여 데이터 영속성 보장
-- 환경 변수로 설정 값 주입 가능
+## 라이선스
 
-## 개발 참고사항
-
-- SQLite 데이터베이스는 앱 시작 시 자동으로 생성됩니다 (`catalog.db`)
-- 이미지는 로컬 파일 시스템에 저장됩니다 (`./uploads/` 디렉토리)
-- 수집률은 카탈로그 조회 시 실시간으로 계산됩니다
-- 모든 API는 사용자별로 데이터가 격리됩니다
-- 개발 환경에서는 `Authorization` 헤더에 사용자 ID를 직접 전달할 수 있습니다
-- Docker 컨테이너 내에서도 동일한 기능이 제공됩니다
+MIT License

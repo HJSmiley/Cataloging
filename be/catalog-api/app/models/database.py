@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, Column, String, Boolean, Text, DateTime, I
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
-from app.config import settings, get_kst_now
+from app.core.config import settings, get_kst_now
 
 # SQLAlchemy 데이터베이스 엔진 설정
 # SQLite 사용, 멀티스레드 환경에서 안전하게 동작하도록 설정

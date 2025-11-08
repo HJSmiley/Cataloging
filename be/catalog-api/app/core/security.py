@@ -1,5 +1,5 @@
 """
-Catalog-API 유틸리티 함수들
+Catalog-API 보안 및 인증 유틸리티
 - JWT 토큰 검증 및 사용자 인증
 - user-api(Spring Boot)에서 발급한 JWT 토큰 호환성 보장
 - Authorization 헤더에서 Bearer 토큰 추출 및 검증
@@ -7,7 +7,7 @@ Catalog-API 유틸리티 함수들
 from fastapi import HTTPException, Depends, Header
 from typing import Optional
 import jwt
-from app.config import settings
+from app.core.config import settings
 
 async def get_current_user_id(authorization: Optional[str] = Header(None)) -> str:
     """
@@ -79,7 +79,7 @@ def create_access_token(user_id: str) -> str:
     - 한국 시간(KST) 기준으로 토큰 생성
     """
     from datetime import timedelta
-    from app.config import get_kst_now
+    from app.core.config import get_kst_now
     
     now = get_kst_now()
     expire = now + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
