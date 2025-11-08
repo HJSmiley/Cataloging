@@ -1,8 +1,3 @@
-좋습니다. 말씀하신 내용을 반영하여, 기존 PRD를 최신 사양에 맞게 수정한 **MVP 버전 PRD**를 아래에 정리하였습니다.
-이 문서는 Flutter + FastAPI + Spring Boot + AWS 아키텍처를 기반으로 한 **실제 개발 지침 수준의 PRD**입니다.
-
----
-
 ### **[PRD] 수집가의 기록 앱 ‘카탈로깅 (Collectors' Companion App)’**
 
 ---

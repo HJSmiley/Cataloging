@@ -64,7 +64,7 @@ pip install -r requirements.txt
 
 ```env
 DATABASE_URL=sqlite:///./catalog.db
-JWT_SECRET_KEY=mySecretKey1234567890123456789012345678901234567890
+JWT_SECRET_KEY=your-jwt-secret-key
 JWT_ALGORITHM=HS256
 UPLOAD_DIR=./uploads
 
