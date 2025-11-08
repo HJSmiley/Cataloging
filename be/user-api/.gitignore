@@ -65,6 +65,12 @@ application-local.properties
 *.env
 .env
 
+# H2 Database files
+data/
+*.mv.db
+*.trace.db
+*.lock.db
+
 # Temporary files
 *.tmp
 *.temp
