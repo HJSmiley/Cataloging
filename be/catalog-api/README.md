@@ -7,7 +7,6 @@
 ```
 catalog-api/
 ├── app/
-│   ├── main.py              # FastAPI 엔트리포인트
 │   ├── core/                # 설정 및 유틸리티
 │   │   ├── __init__.py
 │   │   ├── config.py        # 환경 설정
@@ -36,7 +35,7 @@ catalog-api/
 │       └── user_catalog.py  # 사용자 카탈로그 CRUD
 ├── .env                     # 환경 변수 파일
 ├── .env.example             # 환경 변수 예시
-├── main.py                  # 하위 호환성을 위한 엔트리포인트
+├── main.py                  # FastAPI 엔트리포인트
 ├── requirements.txt         # Python 의존성
 └── README.md                # 프로젝트 문서
 
@@ -60,9 +59,19 @@ pip install -r requirements.txt
 
 ### 2. 환경 변수 설정
 
-`.env` 파일을 생성하고 다음 내용을 설정:
+`.env.example` 파일을 참고하여 `.env` 파일을 생성:
+
+```bash
+cp .env.example .env
+```
+
+`.env` 파일 내용:
 
 ```env
+# 서버 설정
+PORT=8002
+HOST=0.0.0.0
+
 DATABASE_URL=sqlite:///./catalog.db
 JWT_SECRET_KEY=your-jwt-secret-key
 JWT_ALGORITHM=HS256
@@ -80,14 +89,17 @@ LOG_FILE=api_communication.log
 ### 3. 서버 실행
 
 ```bash
-# 개발 서버 실행
+# 개발 서버 실행 (환경 변수에서 포트 설정 사용)
 python main.py
 
-# 또는 uvicorn 직접 실행
-uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+# 또는 uvicorn 직접 실행 (포트 변경 가능)
+uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+
+# 또는 환경 변수로 포트 지정
+PORT=8003 python main.py
 ```
 
-서버는 `http://localhost:8002`에서 실행됩니다.
+서버는 기본적으로 `http://localhost:8002`에서 실행됩니다 (PORT 환경 변수로 변경 가능).
 
 ### 4. API 문서 확인
 
@@ -161,7 +173,7 @@ SQLite를 사용하며, 다음 테이블들이 자동으로 생성됩니다:
 1. `app/schemas/`에 Pydantic 스키마 정의
 2. `app/crud/`에 CRUD 함수 작성
 3. `app/api/`에 라우터 생성
-4. `app/main.py`에 라우터 등록
+4. `main.py`에 라우터 등록
 
 ## 라이선스
 

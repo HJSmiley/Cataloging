@@ -23,9 +23,14 @@
 
 ### 1. 환경 변수 설정 (선택사항)
 
-OAuth2 클라이언트 설정을 위해 환경 변수를 설정하거나 `application.yml`을 수정하세요:
+`.env.example` 파일을 참고하여 `.env` 파일을 생성하거나 환경 변수를 설정하세요:
 
 ```bash
+# .env 파일 생성
+cp .env.example .env
+
+# 또는 환경 변수로 직접 설정
+export PORT=8081
 export GOOGLE_CLIENT_ID=your-google-client-id
 export GOOGLE_CLIENT_SECRET=your-google-client-secret
 export NAVER_CLIENT_ID=your-naver-client-id

@@ -189,9 +189,9 @@ source venv/bin/activate
 # 의존성 설치
 pip install -r requirements.txt
 # 서버 실행
-python -m app.main
+python main.py
 # 또는 uvicorn으로 실행
-uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+uvicorn main:app --host 0.0.0.0 --port 8002 --reload
 # 포트: 8002
 # 헬스체크: http://localhost:8002/health
 # API 문서: http://localhost:8002/docs
@@ -263,8 +263,8 @@ be/user-api/
 #### Catalog API (FastAPI)
 ```
 be/catalog-api/
+├── main.py                      # FastAPI 진입점
 ├── app/
-│   ├── main.py                  # FastAPI 진입점
 │   ├── core/                    # 핵심 기능 (설정, 보안, 미들웨어)
 │   ├── api/                     # API 라우터 (엔드포인트)
 │   ├── models/                  # SQLAlchemy ORM 모델

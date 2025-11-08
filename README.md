@@ -267,8 +267,8 @@ be/user-api/
 
 ```
 be/catalog-api/
+├── main.py                      # FastAPI 앱 진입점
 ├── app/
-│   ├── main.py                  # FastAPI 앱 진입점
 │   ├── core/                    # 핵심 기능
 │   │   ├── config.py           # 환경 설정 및 로깅
 │   │   ├── security.py         # JWT 인증 및 사용자 검증
@@ -318,7 +318,9 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # 의존성 설치
 pip install -r requirements.txt
 # 서버 실행
-uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+python main.py
+# 또는 uvicorn으로 직접 실행
+uvicorn main:app --host 0.0.0.0 --port 8002 --reload
 # 포트: 8002
 # Health check: http://localhost:8002/health
 # API 문서: http://localhost:8002/docs
