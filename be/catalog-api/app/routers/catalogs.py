@@ -9,6 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 from sqlalchemy.orm import Session
+from app.config import get_kst_now
 from sqlalchemy import func, and_
 
 from app.models import Catalog, CatalogCreate, CatalogUpdate, ErrorResponse
@@ -294,7 +295,7 @@ async def update_catalog(
             for key, value in update_data.items():
                 setattr(catalog_record, key, value)
             
-            catalog_record.updated_at = datetime.utcnow()
+            catalog_record.updated_at = get_kst_now()
             db.commit()
             db.refresh(catalog_record)
         

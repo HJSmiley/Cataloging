@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from datetime import datetime
 import uuid
 import os
+from app.config import get_kst_now
 import shutil
 from pathlib import Path
 
@@ -28,8 +29,8 @@ async def upload_file(
                 detail=f"지원하지 않는 파일 형식입니다. 허용된 형식: {', '.join(allowed_extensions)}"
             )
         
-        # 파일명 생성 (사용자ID/년월일/UUID.확장자)
-        now = datetime.utcnow()
+        # 파일명 생성 (사용자ID/년월일/UUID.확장자) - 한국 시간 기준
+        now = get_kst_now()
         date_prefix = now.strftime("%Y/%m/%d")
         file_id = str(uuid.uuid4())
         

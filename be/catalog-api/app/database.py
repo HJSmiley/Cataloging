@@ -3,14 +3,14 @@ Catalog-API 데이터베이스 설정 및 모델 정의
 - SQLite 데이터베이스 연결 및 세션 관리
 - 카탈로그, 아이템, 사용자 관련 테이블 정의
 - 데이터베이스 초기화 및 의존성 주입 함수 제공
+- 한국 시간(KST) 기준으로 타임스탬프 저장
 """
 import os
 from sqlalchemy import create_engine, Column, String, Boolean, Text, DateTime, Integer, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.sql import func
 from datetime import datetime
-from app.config import settings
+from app.config import settings, get_kst_now
 
 # SQLAlchemy 데이터베이스 엔진 설정
 # SQLite 사용, 멀티스레드 환경에서 안전하게 동작하도록 설정
@@ -38,8 +38,8 @@ class CatalogDB(Base):
     tags = Column(JSON, default=list)                         # 태그 배열 (JSON 형태)
     visibility = Column(String, default="public")             # 공개 설정 (public/private)
     thumbnail_url = Column(String, nullable=True)             # 썸네일 이미지 URL
-    created_at = Column(DateTime, default=func.now())         # 생성 시간
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정 시간
+    created_at = Column(DateTime, default=get_kst_now)        # 생성 시간 (KST)
+    updated_at = Column(DateTime, default=get_kst_now, onupdate=get_kst_now)  # 수정 시간 (KST)
 
 class ItemDB(Base):
     """아이템 테이블 - 카탈로그에 속한 개별 수집품 정보"""
@@ -51,8 +51,8 @@ class ItemDB(Base):
     description = Column(Text, nullable=False)                # 아이템 설명
     image_url = Column(String, nullable=True)                 # 아이템 이미지 URL
     user_fields = Column(JSON, default=dict)                  # 사용자 정의 필드 (JSON 형태)
-    created_at = Column(DateTime, default=func.now())         # 생성 시간
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정 시간
+    created_at = Column(DateTime, default=get_kst_now)        # 생성 시간 (KST)
+    updated_at = Column(DateTime, default=get_kst_now, onupdate=get_kst_now)  # 수정 시간 (KST)
 
 class UserCatalogDB(Base):
     """사용자 카탈로그 저장 테이블 - 다른 사용자의 카탈로그를 내 컬렉션에 저장"""
@@ -62,7 +62,7 @@ class UserCatalogDB(Base):
     user_id = Column(String, index=True, nullable=False)              # 저장한 사용자 ID
     original_catalog_id = Column(String, index=True, nullable=False)  # 원본 카탈로그 ID
     copied_catalog_id = Column(String, index=True, nullable=True)     # 복사본 카탈로그 ID (내 컬렉션용)
-    saved_at = Column(DateTime, default=func.now())                   # 저장 시간
+    saved_at = Column(DateTime, default=get_kst_now)                  # 저장 시간 (KST)
     
     # 복합 인덱스: 한 사용자가 같은 원본 카탈로그를 중복 저장하지 않도록 제약
     __table_args__ = (
@@ -77,8 +77,8 @@ class UserItemStatusDB(Base):
     user_id = Column(String, index=True, nullable=False)              # 사용자 ID
     item_id = Column(String, index=True, nullable=False)              # 아이템 ID
     owned = Column(Boolean, default=False)                            # 보유 여부 (True: 보유, False: 미보유)
-    created_at = Column(DateTime, default=func.now())                 # 생성 시간
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())  # 수정 시간
+    created_at = Column(DateTime, default=get_kst_now)                # 생성 시간 (KST)
+    updated_at = Column(DateTime, default=get_kst_now, onupdate=get_kst_now)  # 수정 시간 (KST)
     
     # 복합 인덱스: 한 사용자의 한 아이템에 대해 하나의 상태만 존재하도록 제약
     __table_args__ = (

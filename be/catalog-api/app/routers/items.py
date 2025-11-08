@@ -9,6 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 from sqlalchemy.orm import Session
+from app.config import get_kst_now
 from sqlalchemy import and_
 
 from app.models import Item, ItemCreate, ItemUpdate, ErrorResponse
@@ -219,7 +220,7 @@ async def update_item(
             for key, value in update_data.items():
                 setattr(item_record, key, value)
             
-            item_record.updated_at = datetime.utcnow()
+            item_record.updated_at = get_kst_now()
             db.commit()
             db.refresh(item_record)
         
@@ -268,7 +269,7 @@ async def toggle_item_owned(
         
         # 3단계: 보유 상태 토글
         user_status.owned = not user_status.owned
-        user_status.updated_at = datetime.utcnow()
+        user_status.updated_at = get_kst_now()
         
         # 4단계: 데이터베이스에 변경사항 저장
         db.commit()

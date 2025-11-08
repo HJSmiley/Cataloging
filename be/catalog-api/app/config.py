@@ -4,13 +4,18 @@ Catalog-API 설정 파일
 - JWT 토큰 설정 (user-api와 동일한 시크릿 키 사용)
 - 데이터베이스 및 파일 업로드 경로 설정
 - CORS, 로깅, 정적 파일 서빙 설정
+- 타임존 설정 (한국 시간 KST)
 """
 import os
 import logging
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 # .env 파일에서 환경변수 로드
 load_dotenv()
+
+# 한국 시간대 (KST = UTC+9)
+KST = timezone(timedelta(hours=9))
 
 class Settings:
     """애플리케이션 설정 클래스"""
@@ -36,9 +41,16 @@ class Settings:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = os.getenv("LOG_FILE", "api_communication.log")
     LOG_FORMAT = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    
+    # 타임존 설정
+    TIMEZONE = KST
 
 # 전역 설정 인스턴스 - 다른 모듈에서 import하여 사용
 settings = Settings()
+
+def get_kst_now():
+    """현재 한국 시간(KST) 반환"""
+    return datetime.now(KST)
 
 def setup_logging():
     """로깅 설정 초기화"""

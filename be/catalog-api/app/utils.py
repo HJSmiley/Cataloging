@@ -76,14 +76,17 @@ def create_access_token(user_id: str) -> str:
     JWT 액세스 토큰 생성 (개발/테스트용)
     - user-api와 동일한 형식으로 토큰 생성
     - 실제 운영에서는 user-api에서만 토큰 발급
+    - 한국 시간(KST) 기준으로 토큰 생성
     """
-    from datetime import datetime, timedelta
+    from datetime import timedelta
+    from app.config import get_kst_now
     
-    expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    now = get_kst_now()
+    expire = now + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     payload = {
         "sub": user_id,        # 사용자 ID (Subject)
         "exp": expire,         # 만료 시간 (Expiration)
-        "iat": datetime.utcnow()  # 발급 시간 (Issued At)
+        "iat": now             # 발급 시간 (Issued At)
     }
     
     token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
