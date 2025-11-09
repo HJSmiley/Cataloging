@@ -29,6 +29,8 @@ class Catalog(CatalogBase):
     owned_count: Optional[int] = Field(default=0, description="보유 아이템 개수")
     completion_rate: Optional[float] = Field(default=0.0, description="수집률")
     original_catalog_id: Optional[str] = Field(default=None, description="원본 카탈로그 ID (복사본인 경우)")
+    creator_nickname: Optional[str] = Field(default=None, description="생성자 닉네임 (공개 카탈로그 조회 시)")
+    is_saved: Optional[bool] = Field(default=False, description="저장 여부 (공개 카탈로그 조회 시)")
 
     class Config:
         from_attributes = True

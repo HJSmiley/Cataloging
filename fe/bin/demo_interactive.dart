@@ -29,6 +29,7 @@ class ClientState {
   User? currentUser;
   String? token;
   List<Catalog> myCatalogs = [];
+  List<Catalog> publicCatalogs = [];
   Catalog? currentCatalog;
   List<Item> currentItems = [];
 
@@ -36,6 +37,7 @@ class ClientState {
     currentUser = null;
     token = null;
     myCatalogs.clear();
+    publicCatalogs.clear();
     currentCatalog = null;
     currentItems.clear();
   }
@@ -60,28 +62,34 @@ void main() async {
           await getUserInfo();
           break;
         case '3':
-          await createCatalog();
+          clearState();
           break;
         case '4':
+          await createCatalog();
+          break;
+        case '5':
           await getMyCatalogs();
           break;
         case '6':
-          await getCatalogDetail();
+          await getPublicCatalogs();
           break;
         case '7':
-          await createItem();
+          await savePublicCatalog();
           break;
         case '8':
-          await getItems();
+          await getCatalogDetail();
           break;
         case '9':
+          await createItem();
+          break;
+        case '10':
+          await getItems();
+          break;
+        case '11':
           await toggleItemOwned();
           break;
         case 's':
           printClientState();
-          break;
-        case 'c':
-          clearState();
           break;
         case 'q':
           print('\n${green}데모를 종료합니다.$reset\n');
@@ -114,17 +122,19 @@ void printMenu() {
   print('  ${bold}인증$reset');
   print('    1. 로그인');
   print('    2. 사용자 정보 조회');
+  print('    3. 로그아웃');
   print('  ${bold}카탈로그$reset');
-  print('    3. 카탈로그 생성');
-  print('    4. 내 카탈로그 목록');
-  print('    6. 카탈로그 상세 조회');
+  print('    4. 카탈로그 생성');
+  print('    5. 내 카탈로그 목록');
+  print('    6. 공개 카탈로그 목록 조회');
+  print('    7. 공개 카탈로그 저장');
+  print('    8. 카탈로그 상세 조회');
   print('  ${bold}아이템$reset');
-  print('    7. 아이템 생성');
-  print('    8. 아이템 목록 조회');
-  print('    9. 아이템 보유 상태 토글');
+  print('    9. 아이템 생성');
+  print('    10. 아이템 목록 조회');
+  print('    11. 아이템 보유 상태 토글');
   print('  ${bold}기타$reset');
   print('    s. 클라이언트 상태 출력');
-  print('    c. 상태 초기화');
   print('    q. 종료');
   print(
       '$bold$blue━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$reset');
@@ -196,9 +206,9 @@ Future<void> getUserInfo() async {
   });
 }
 
-// ========== 3. 카탈로그 생성 ==========
+// ========== 4. 카탈로그 생성 ==========
 Future<void> createCatalog() async {
-  printSection('3️⃣ 카탈로그 생성');
+  printSection('4️⃣ 카탈로그 생성');
 
   if (clientState.token == null) {
     printError('먼저 로그인해주세요.');
@@ -209,10 +219,15 @@ Future<void> createCatalog() async {
   final title = stdin.readLineSync()?.trim();
   final finalTitle = title?.isEmpty ?? true ? '포켓몬 카드 컬렉션' : title!;
 
+  stdout.write('설명 (기본값: 1세대 포켓몬 카드 151종 수집): ');
+  final description = stdin.readLineSync()?.trim();
+  final finalDescription =
+      description?.isEmpty ?? true ? '1세대 포켓몬 카드 151종 수집' : description!;
+
   printApiCall('POST', '${apiService.catalogApiBaseUrl}/api/catalogs');
   printRequestBody({
     'title': finalTitle,
-    'description': '1세대 포켓몬 카드 151종 수집',
+    'description': finalDescription,
     'category': '카드',
   });
 
@@ -220,7 +235,7 @@ Future<void> createCatalog() async {
 
   final catalogData = await apiService.createCatalog(
     title: finalTitle,
-    description: '1세대 포켓몬 카드 151종 수집',
+    description: finalDescription,
     category: '카드',
   );
 
@@ -237,9 +252,9 @@ Future<void> createCatalog() async {
   });
 }
 
-// ========== 4. 내 카탈로그 목록 ==========
+// ========== 5. 내 카탈로그 목록 ==========
 Future<void> getMyCatalogs() async {
-  printSection('4️⃣ 내 카탈로그 목록');
+  printSection('5️⃣ 내 카탈로그 목록');
 
   if (clientState.token == null) {
     printError('먼저 로그인해주세요.');
@@ -258,15 +273,118 @@ Future<void> getMyCatalogs() async {
   clientState.myCatalogs =
       catalogsData.map((json) => Catalog.fromJson(json)).toList();
 
-  printClientStateUpdate('카탈로그 목록 업데이트', {
+  printClientStateUpdate('카탈로그 목록 출력', {
     'total_count': clientState.myCatalogs.length,
     'catalogs': clientState.myCatalogs.map((c) => c.title).toList(),
   });
 }
 
-// ========== 6. 카탈로그 상세 조회 ==========
+// ========== 6. 공개 카탈로그 목록 조회 ==========
+Future<void> getPublicCatalogs() async {
+  printSection('6️⃣ 공개 카탈로그 목록 조회');
+
+  if (clientState.token == null) {
+    printError('먼저 로그인해주세요.');
+    return;
+  }
+
+  stdout.write('카테고리 필터 (선택사항, Enter로 건너뛰기): ');
+  final category = stdin.readLineSync()?.trim();
+  final finalCategory = category?.isEmpty ?? true ? null : category;
+
+  printApiCall('GET', '${apiService.catalogApiBaseUrl}/api/catalogs/public');
+  if (finalCategory != null) {
+    print('  Query: category=$finalCategory');
+  }
+
+  print('\n${yellow}⏳ 서버에 요청 중...$reset\n');
+
+  final catalogsData =
+      await apiService.getPublicCatalogs(category: finalCategory);
+
+  printServerResponse('공개 카탈로그 목록 (${catalogsData.length}개)', catalogsData);
+
+  clientState.publicCatalogs =
+      catalogsData.map((json) => Catalog.fromJson(json)).toList();
+
+  printClientStateUpdate('공개 카탈로그 목록 업데이트', {
+    'total_count': clientState.publicCatalogs.length,
+    'catalogs': clientState.publicCatalogs
+        .map((c) => {
+              'title': c.title,
+              'creator': c.creatorNickname,
+              'is_saved': c.isSaved,
+            })
+        .toList(),
+  });
+}
+
+// ========== 7. 공개 카탈로그 저장 ==========
+Future<void> savePublicCatalog() async {
+  printSection('7️⃣ 공개 카탈로그 저장');
+
+  if (clientState.token == null) {
+    printError('먼저 로그인해주세요.');
+    return;
+  }
+
+  if (clientState.publicCatalogs.isEmpty) {
+    printError('먼저 공개 카탈로그 목록을 조회해주세요. (메뉴 6)');
+    return;
+  }
+
+  print('\n${cyan}저장 가능한 공개 카탈로그:$reset');
+  for (var i = 0; i < clientState.publicCatalogs.length; i++) {
+    final catalog = clientState.publicCatalogs[i];
+    final savedStatus = catalog.isSaved ? '✅ 저장됨' : '❌ 미저장';
+    print(
+        '  ${i + 1}. ${catalog.title} (by ${catalog.creatorNickname}) - $savedStatus');
+  }
+
+  stdout.write('\n선택 (기본값: 1): ');
+  final choice = stdin.readLineSync()?.trim();
+  final index = int.tryParse(choice ?? '1') ?? 1;
+
+  if (index < 1 || index > clientState.publicCatalogs.length) {
+    printError('잘못된 선택입니다.');
+    return;
+  }
+
+  final catalog = clientState.publicCatalogs[index - 1];
+
+  if (catalog.isSaved) {
+    printError('이미 저장된 카탈로그입니다.');
+    return;
+  }
+
+  final catalogId = catalog.catalogId;
+
+  printApiCall(
+      'POST', '${apiService.catalogApiBaseUrl}/api/user-catalogs/save-catalog');
+  printRequestBody({'catalog_id': catalogId});
+
+  print('\n${yellow}⏳ 서버에 요청 중...$reset\n');
+
+  final savedData = await apiService.saveCatalog(catalogId);
+
+  printServerResponse('카탈로그 저장 응답', savedData);
+
+  // 저장 상태 업데이트
+  clientState.publicCatalogs[index - 1] = Catalog.fromJson({
+    ...catalog.toJson(),
+    'is_saved': true,
+  });
+
+  printClientStateUpdate('카탈로그 저장 완료', {
+    'original_catalog_id': catalogId,
+    'saved_catalog_id': savedData['catalog_id'],
+    'title': catalog.title,
+  });
+}
+
+// ========== 8. 카탈로그 상세 조회 ==========
 Future<void> getCatalogDetail() async {
-  printSection('6️⃣ 카탈로그 상세 조회');
+  printSection('8️⃣ 카탈로그 상세 조회');
 
   if (clientState.myCatalogs.isEmpty) {
     printError('먼저 카탈로그를 생성하거나 목록을 조회해주세요.');
@@ -307,12 +425,12 @@ Future<void> getCatalogDetail() async {
   });
 }
 
-// ========== 7. 아이템 생성 ==========
+// ========== 9. 아이템 생성 ==========
 Future<void> createItem() async {
-  printSection('7️⃣ 아이템 생성');
+  printSection('9️⃣ 아이템 생성');
 
   if (clientState.currentCatalog == null) {
-    printError('먼저 카탈로그를 선택해주세요. (메뉴 6)');
+    printError('먼저 카탈로그를 선택해주세요. (메뉴 8)');
     return;
   }
 
@@ -348,12 +466,12 @@ Future<void> createItem() async {
   });
 }
 
-// ========== 8. 아이템 목록 조회 ==========
+// ========== 10. 아이템 목록 조회 ==========
 Future<void> getItems() async {
-  printSection('8️⃣ 아이템 목록 조회');
+  printSection('🔟 아이템 목록 조회');
 
   if (clientState.currentCatalog == null) {
-    printError('먼저 카탈로그를 선택해주세요. (메뉴 6)');
+    printError('먼저 카탈로그를 선택해주세요. (메뉴 8)');
     return;
   }
 
@@ -382,12 +500,12 @@ Future<void> getItems() async {
   });
 }
 
-// ========== 9. 아이템 보유 상태 토글 ==========
+// ========== 11. 아이템 보유 상태 토글 ==========
 Future<void> toggleItemOwned() async {
-  printSection('9️⃣ 아이템 보유 상태 토글');
+  printSection('1️⃣1️⃣ 아이템 보유 상태 토글');
 
   if (clientState.currentItems.isEmpty) {
-    printError('먼저 아이템 목록을 조회해주세요. (메뉴 8)');
+    printError('먼저 아이템 목록을 조회해주세요. (메뉴 10)');
     return;
   }
 
@@ -489,6 +607,12 @@ void printClientState() {
     print('    - ${catalog.title}');
   }
 
+  print('  공개 카탈로그: ${clientState.publicCatalogs.length}개');
+  for (var catalog in clientState.publicCatalogs) {
+    final savedStatus = catalog.isSaved ? '✅' : '❌';
+    print('    $savedStatus ${catalog.title} (by ${catalog.creatorNickname})');
+  }
+
   if (clientState.currentCatalog != null) {
     print('  현재 카탈로그: ${clientState.currentCatalog!.title}');
   }
@@ -504,7 +628,7 @@ void printClientState() {
 void clearState() {
   clientState.clear();
   apiService.setToken(null);
-  print('\n${green}✓ 클라이언트 상태가 초기화되었습니다.$reset');
+  print('\n${green}✓ 로그아웃되었습니다.$reset');
 }
 
 void printError(String message) {

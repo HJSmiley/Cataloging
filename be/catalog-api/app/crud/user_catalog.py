@@ -19,6 +19,19 @@ def get_user_catalog(db: Session, user_id: str, original_catalog_id: str) -> Opt
     ).first()
 
 
+def check_catalog_saved(db: Session, user_id: str, catalog_id: str) -> bool:
+    """카탈로그 저장 여부 확인"""
+    # catalog_id가 원본 카탈로그 ID인 경우
+    saved = db.query(UserCatalogDB).filter(
+        and_(
+            UserCatalogDB.user_id == user_id,
+            UserCatalogDB.original_catalog_id == catalog_id
+        )
+    ).first()
+    
+    return saved is not None
+
+
 def save_catalog(db: Session, user_id: str, original_catalog_id: str) -> dict:
     """카탈로그 복사 및 저장"""
     # 원본 카탈로그 조회

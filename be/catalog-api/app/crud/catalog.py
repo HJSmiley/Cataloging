@@ -150,7 +150,13 @@ def calculate_catalog_stats(db: Session, catalog_id: str, user_id: str) -> dict:
     }
 
 
-def build_catalog_response(catalog_record: CatalogDB, stats: dict, original_catalog_id: str = None) -> dict:
+def build_catalog_response(
+    catalog_record: CatalogDB, 
+    stats: dict, 
+    original_catalog_id: str = None,
+    creator_nickname: str = None,
+    is_saved: bool = False
+) -> dict:
     """카탈로그 응답 데이터 구성"""
     return {
         "catalog_id": catalog_record.catalog_id,
@@ -166,5 +172,7 @@ def build_catalog_response(catalog_record: CatalogDB, stats: dict, original_cata
         "item_count": stats["item_count"],
         "owned_count": stats["owned_count"],
         "completion_rate": stats["completion_rate"],
-        "original_catalog_id": original_catalog_id
+        "original_catalog_id": original_catalog_id,
+        "creator_nickname": creator_nickname,
+        "is_saved": is_saved
     }

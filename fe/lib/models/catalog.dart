@@ -13,6 +13,8 @@ class Catalog {
   final int ownedCount;
   final double completionRate;
   final String? originalCatalogId; // 복사본인 경우 원본 카탈로그 ID
+  final String? creatorNickname;
+  final bool isSaved;
 
   Catalog({
     required this.catalogId,
@@ -29,6 +31,8 @@ class Catalog {
     this.ownedCount = 0,
     this.completionRate = 0.0,
     this.originalCatalogId,
+    this.creatorNickname,
+    this.isSaved = false,
   });
 
   factory Catalog.fromJson(Map<String, dynamic> json) {
@@ -49,6 +53,8 @@ class Catalog {
       ownedCount: json['owned_count'] as int? ?? 0,
       completionRate: (json['completion_rate'] as num?)?.toDouble() ?? 0.0,
       originalCatalogId: json['original_catalog_id'] as String?,
+      creatorNickname: json['creator_nickname'] as String?,
+      isSaved: json['is_saved'] as bool? ?? false,
     );
   }
 
@@ -68,6 +74,8 @@ class Catalog {
       'owned_count': ownedCount,
       'completion_rate': completionRate,
       'original_catalog_id': originalCatalogId,
+      'creator_nickname': creatorNickname,
+      'is_saved': isSaved,
     };
   }
 }

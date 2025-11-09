@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**", "/oauth2/**", "/login/**", "/h2-console/**").permitAll()
                 .requestMatchers("/api/test/**", "/api/dev/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/users/{userId}").permitAll()  // 공개 프로필 조회 허용
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

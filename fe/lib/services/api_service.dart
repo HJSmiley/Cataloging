@@ -157,7 +157,11 @@ class ApiService {
     if (_token != null) {
       try {
         final userInfo = await getCurrentUser();
-        queryParams['user_id'] = userInfo['user_id'];
+        // User API는 'id' 필드를 사용하지만, Catalog API는 'user_id'를 기대
+        final userId = userInfo['id'] ?? userInfo['user_id'];
+        if (userId != null) {
+          queryParams['user_id'] = userId.toString();
+        }
       } catch (e) {
         print('사용자 정보 조회 실패: $e');
       }

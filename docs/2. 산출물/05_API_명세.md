@@ -216,7 +216,7 @@ Authorization: Bearer {JWT}
 ```
 
 #### GET /api/users/{userId}
-특정 사용자 조회
+특정 사용자 공개 프로필 조회 (인증 불필요)
 
 **요청**:
 ```http
@@ -235,6 +235,10 @@ GET /api/users/1
   "updatedAt": "2025-11-08T10:00:00"
 }
 ```
+
+**참고**:
+- 인증 없이 접근 가능 (공개 프로필)
+- Catalog API에서 생성자 닉네임 조회 시 사용
 
 ## 4. Catalog API (FastAPI)
 
@@ -391,16 +395,17 @@ Authorization: Bearer {JWT}
 ### 4.3 카탈로그 API
 
 #### GET /api/catalogs/public
-공개 카탈로그 목록 조회
+공개 카탈로그 목록 조회 (인증 선택)
 
 **요청**:
 ```http
-GET /api/catalogs/public?category=피규어
+GET /api/catalogs/public?category=피규어&user_id=1
+Authorization: Bearer {JWT} (선택)
 ```
 
 **쿼리 파라미터**:
 - `category` (optional): 카테고리 필터
-- `user_id` (optional): 특정 사용자의 공개 카탈로그만 조회
+- `user_id` (optional): 현재 사용자 ID (자신의 카탈로그 제외용)
 
 **응답** (200 OK):
 ```json
@@ -418,10 +423,16 @@ GET /api/catalogs/public?category=피규어
     "updated_at": "2025-11-08T10:00:00",
     "item_count": 15,
     "owned_count": 0,
-    "completion_rate": 0.0
+    "completion_rate": 0.0,
+    "creator_nickname": "수집왕",
+    "is_saved": false
   }
 ]
 ```
+
+**새로운 필드**:
+- `creator_nickname`: 카탈로그 생성자 닉네임 (User API에서 조회)
+- `is_saved`: 현재 사용자가 이 카탈로그를 저장했는지 여부 (로그인 시에만)
 
 #### GET /api/catalogs/{catalog_id}
 카탈로그 상세 조회

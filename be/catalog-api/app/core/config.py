@@ -58,12 +58,16 @@ def get_kst_now():
 
 def setup_logging():
     """로깅 설정 초기화"""
+    # 기존 로거 설정 완전히 제거
+    logging.basicConfig(force=True, format='%(message)s', level=logging.WARNING)
+    
     logger = logging.getLogger("API_COMMUNICATION")
     logger.handlers.clear()
     logger.setLevel(logging.WARNING)
     logger.propagate = False
 
-    formatter = logging.Formatter(settings.LOG_FORMAT)
+    # 타임스탬프 없는 포맷
+    formatter = logging.Formatter('%(message)s')
 
     # 파일
     file_handler = logging.FileHandler(settings.LOG_FILE)

@@ -98,7 +98,6 @@ async def log_requests_middleware(request: Request, call_next):
 
     logger.warning("📥 [CATALOG-API → CLIENT] RESPONSE")
     logger.warning(f"   Status: {response.status_code}")
-    logger.warning(f"   Time: {process_time:.3f}s")
 
     # 응답 본문 로깅 (JSON인 경우)
     if response_body:

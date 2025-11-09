@@ -47,7 +47,7 @@ async def get_catalogs(
         raise HTTPException(status_code=500, detail=f"데이터베이스 오류: {e}")
 
 @router.get("/public", response_model=List[Catalog])
-async def get_public_catalogs(
+def get_public_catalogs(
     category: Optional[str] = Query(None, description="카테고리 필터"),
     user_id: Optional[str] = Query(None, description="현재 사용자 ID (자신의 카탈로그 제외용)"),
     db: Session = Depends(get_db)  # SQLite 데이터베이스 세션
@@ -58,13 +58,50 @@ async def get_public_catalogs(
     - 모든 공개 카탈로그를 시간순으로 반환 (로그인 불필요)
     """
     try:
+        import requests
+        from app.crud.user_catalog import check_catalog_saved
+        
         catalog_records = catalog_crud.get_public_catalogs(db, category, user_id)
+        
+        # User API에서 사용자 정보 가져오기
+        user_api_url = "http://localhost:8080/api/users"
+        user_nicknames = {}
         
         catalogs = []
         for catalog_record in catalog_records:
+            # 생성자 닉네임 가져오기
+            creator_nickname = None
+            if catalog_record.user_id not in user_nicknames:
+                try:
+                    url = f"{user_api_url}/{catalog_record.user_id}"
+                    response = requests.get(url, timeout=2)
+                    
+                    if response.status_code == 200:
+                        if response.text:
+                            user_data = response.json()
+                            user_nicknames[catalog_record.user_id] = user_data.get("nickname", "알 수 없음")
+                        else:
+                            user_nicknames[catalog_record.user_id] = "알 수 없음"
+                    else:
+                        user_nicknames[catalog_record.user_id] = "알 수 없음"
+                except Exception as e:
+                    user_nicknames[catalog_record.user_id] = "알 수 없음"
+            
+            creator_nickname = user_nicknames.get(catalog_record.user_id)
+            
+            # 저장 여부 확인
+            is_saved = False
+            if user_id:
+                is_saved = check_catalog_saved(db, user_id, catalog_record.catalog_id)
+            
             # 공개 카탈로그는 원작자 기준으로 통계 계산
             stats = catalog_crud.calculate_catalog_stats(db, catalog_record.catalog_id, catalog_record.user_id)
-            catalog_data = catalog_crud.build_catalog_response(catalog_record, stats)
+            catalog_data = catalog_crud.build_catalog_response(
+                catalog_record, 
+                stats,
+                creator_nickname=creator_nickname,
+                is_saved=is_saved
+            )
             catalogs.append(Catalog(**catalog_data))
         
         return catalogs
