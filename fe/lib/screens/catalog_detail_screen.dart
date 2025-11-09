@@ -12,7 +12,7 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_controller.dart';
 import '../models/item.dart';
-import '../services/api_service.dart';
+import '../services/platform_config.dart';
 
 import 'item_detail_screen.dart';
 import 'catalog_edit_screen.dart';
@@ -252,7 +252,7 @@ class _CatalogDetailScreenState extends State<CatalogDetailScreen> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
-                            ApiService.getImageUrl(catalog.thumbnailUrl),
+                            PlatformConfig.getImageUrl(catalog.thumbnailUrl),
                             height: 200,
                             width: double.infinity,
                             fit: BoxFit.cover,
@@ -544,7 +544,7 @@ class _ItemCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
-                    ApiService.getImageUrl(item.imageUrl),
+                    PlatformConfig.getImageUrl(item.imageUrl),
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,

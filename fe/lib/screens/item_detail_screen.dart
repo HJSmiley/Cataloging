@@ -13,7 +13,7 @@ import 'package:get/get.dart';
 import 'dart:math';
 import '../controllers/catalog_controller.dart';
 import '../models/item.dart';
-import '../services/api_service.dart';
+import '../services/platform_config.dart';
 import '../widgets/slide_to_act_button.dart';
 
 class ItemDetailScreen extends StatefulWidget {
@@ -155,7 +155,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen>
                           color: Colors.grey[300],
                         ),
                         child: Image.network(
-                          ApiService.getImageUrl(item.imageUrl),
+                          PlatformConfig.getImageUrl(item.imageUrl),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return const Center(

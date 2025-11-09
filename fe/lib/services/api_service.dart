@@ -1,58 +1,29 @@
 /**
- * API 서비스 클래스
+ * API 서비스 클래스 (순수 Dart)
  * - user-api(Spring Boot)와 catalog-api(FastAPI) 통신 담당
  * - JWT 토큰 기반 인증 처리
- * - 플랫폼별 API URL 자동 설정
  * - UTF-8 인코딩 지원으로 한글 처리
+ * - Flutter 의존성 없음 (CLI에서도 사용 가능)
  */
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:flutter/foundation.dart';
 
 class ApiService {
-  /**
-   * 플랫폼별 Catalog API 베이스 URL 설정
-   * - 웹: localhost:8000 (개발 서버 직접 접근)
-   * - 안드로이드: 10.0.2.2:8000 (에뮬레이터 호스트 매핑)
-   * - iOS: localhost:8000 (시뮬레이터는 호스트와 네트워크 공유)
-   */
-  static String get catalogApiBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000'; // 웹 브라우저
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000'; // 안드로이드 에뮬레이터 (특수 IP)
-    } else if (Platform.isIOS) {
-      return 'http://localhost:8000'; // iOS 시뮬레이터
-    } else {
-      return 'http://localhost:8000'; // 기타 플랫폼 (macOS, Windows 등)
-    }
-  }
+  // API 베이스 URL (기본값: localhost)
+  final String catalogApiBaseUrl;
+  final String userApiBaseUrl;
 
-  /**
-   * 플랫폼별 User API 베이스 URL 설정
-   * - catalog-api와 동일한 패턴으로 포트만 8080로 변경
-   */
-  static String get userApiBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8080'; // 웹 브라우저
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8080'; // 안드로이드 에뮬레이터
-    } else if (Platform.isIOS) {
-      return 'http://localhost:8080'; // iOS 시뮬레이터
-    } else {
-      return 'http://localhost:8080'; // 기타 플랫폼
-    }
-  }
+  ApiService({
+    this.catalogApiBaseUrl = 'http://localhost:8000',
+    this.userApiBaseUrl = 'http://localhost:8080',
+  });
 
   /**
    * 이미지 URL 생성 헬퍼 함수
-   * - catalog-api의 /uploads 경로로 이미지 접근
-   * - null 체크로 안전한 URL 생성
    */
-  static String getImageUrl(String? imagePath) {
+  String getImageUrl(String? imagePath) {
     if (imagePath == null) return '';
     return '$catalogApiBaseUrl$imagePath';
   }
@@ -62,8 +33,6 @@ class ApiService {
 
   /**
    * UTF-8 인코딩을 보장하는 JSON 디코딩 헬퍼
-   * - 한글 등 유니코드 문자 정상 처리
-   * - response.body 대신 response.bodyBytes 사용
    */
   dynamic _decodeUtf8Response(http.Response response) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -71,8 +40,6 @@ class ApiService {
 
   /**
    * JWT 토큰 설정
-   * - 로그인 성공 시 AuthController에서 호출
-   * - 이후 모든 API 요청에 Authorization 헤더 자동 추가
    */
   void setToken(String? token) {
     _token = token;
@@ -80,61 +47,47 @@ class ApiService {
 
   /**
    * HTTP 요청 헤더 생성
-   * - UTF-8 인코딩 명시
-   * - JWT 토큰이 있으면 Authorization 헤더 추가
    */
   Map<String, String> get _headers => {
         'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json; charset=utf-8',
-        if (_token != null) 'Authorization': 'Bearer $_token', // JWT 토큰 포함
+        if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
   // ========== User API (Spring Boot) 연동 ==========
 
   /**
    * 개발용 간편 로그인
-   * - user-api의 /api/auth/dev-login 엔드포인트 호출
-   * - OAuth2 없이 이메일/닉네임만으로 로그인
-   * - JWT 토큰 발급받아 AuthController에서 저장
-   * - 개발 및 테스트 환경에서 사용
    */
   Future<Map<String, dynamic>> devLogin(String email, String nickname) async {
     final response = await http.post(
-      Uri.parse(
-          '$userApiBaseUrl/api/auth/dev-login'), // Spring Boot AuthController
+      Uri.parse('$userApiBaseUrl/api/auth/dev-login'),
       headers: {'Content-Type': 'application/json'},
       body: utf8.encode(jsonEncode({
-        'email': email, // 사용자 이메일
-        'nickname': nickname, // 사용자 닉네임
+        'email': email,
+        'nickname': nickname,
       })),
     );
 
     if (response.statusCode == 200) {
-      // 로그인 성공: JWT 토큰과 사용자 정보 반환
       return _decodeUtf8Response(response);
     } else {
-      // 로그인 실패: 에러 메시지와 함께 예외 발생
       throw Exception('로그인 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
   /**
    * 현재 로그인한 사용자 정보 조회
-   * - user-api의 /api/users/me 엔드포인트 호출
-   * - JWT 토큰 필수 (Authorization 헤더)
-   * - 마이페이지 화면에서 프로필 표시용
    */
   Future<Map<String, dynamic>> getCurrentUser() async {
     final response = await http.get(
-      Uri.parse('$userApiBaseUrl/api/users/me'), // Spring Boot UserController
-      headers: _headers, // JWT 토큰 포함
+      Uri.parse('$userApiBaseUrl/api/users/me'),
+      headers: _headers,
     );
 
     if (response.statusCode == 200) {
-      // 사용자 정보 조회 성공
       return Map<String, dynamic>.from(_decodeUtf8Response(response));
     } else {
-      // 조회 실패 (토큰 만료, 권한 없음 등)
       throw Exception('사용자 정보 조회 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
@@ -178,48 +131,34 @@ class ApiService {
   // ========== Catalog API (FastAPI) 연동 ==========
 
   /**
-   * 내 카탈로그 목록 조회 (홈 화면용)
-   * - catalog-api의 /api/user-catalogs/my-catalogs 엔드포인트 호출
-   * - 내가 생성한 카탈로그 + 저장한 카탈로그 (복사본) 모두 반환
-   * - JWT 토큰으로 사용자 인증 후 해당 사용자 소유 카탈로그만 조회
-   * - 각 카탈로그의 수집률(completion_rate) 포함
+   * 내 카탈로그 목록 조회
    */
   Future<List<dynamic>> getMyCatalogs() async {
     final response = await http.get(
-      Uri.parse(
-          '$catalogApiBaseUrl/api/user-catalogs/my-catalogs'), // FastAPI UserCatalogRouter
-      headers: _headers, // JWT 토큰 포함
+      Uri.parse('$catalogApiBaseUrl/api/user-catalogs/my-catalogs'),
+      headers: _headers,
     );
 
     if (response.statusCode == 200) {
-      // 카탈로그 목록 조회 성공
       return _decodeUtf8Response(response);
     } else {
-      // 조회 실패 (인증 오류, 서버 오류 등)
       throw Exception('카탈로그 목록 조회 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
 
   /**
-   * 공개 카탈로그 목록 조회 (탐색 화면용)
-   * - catalog-api의 /api/catalogs/public 엔드포인트 호출
-   * - 모든 사용자의 공개 카탈로그를 최신순으로 조회
-   * - 로그인 불필요 (선택적 인증)
-   * - 로그인한 경우 자신의 카탈로그는 제외하여 표시
+   * 공개 카탈로그 목록 조회
    */
   Future<List<dynamic>> getPublicCatalogs({String? category}) async {
     final queryParams = <String, String>{};
 
-    // 카테고리 필터 적용
     if (category != null) queryParams['category'] = category;
 
-    // 로그인한 사용자가 있으면 user_id 추가 (자신의 카탈로그 제외용)
     if (_token != null) {
       try {
         final userInfo = await getCurrentUser();
-        queryParams['user_id'] = userInfo['user_id']; // 현재 사용자 ID
+        queryParams['user_id'] = userInfo['user_id'];
       } catch (e) {
-        // 사용자 정보 조회 실패 시 무시하고 계속 진행 (비로그인 상태로 처리)
         print('사용자 정보 조회 실패: $e');
       }
     }
@@ -230,10 +169,8 @@ class ApiService {
     final response = await http.get(uri, headers: _headers);
 
     if (response.statusCode == 200) {
-      // 공개 카탈로그 목록 조회 성공
       return _decodeUtf8Response(response);
     } else {
-      // 조회 실패
       throw Exception('공개 카탈로그 조회 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
@@ -325,26 +262,18 @@ class ApiService {
   }
 
   /**
-   * 카탈로그 저장 (다른 사용자의 카탈로그를 내 컬렉션에 복사)
-   * - catalog-api의 /api/user-catalogs/save-catalog 엔드포인트 호출
-   * - 원본 카탈로그와 모든 아이템을 완전 복사하여 새 카탈로그 생성
-   * - 복사본은 현재 사용자 소유가 되어 자유롭게 수정 가능
-   * - 중복 저장 방지 (같은 원본 카탈로그는 한 번만 저장 가능)
+   * 카탈로그 저장
    */
   Future<Map<String, dynamic>> saveCatalog(String catalogId) async {
     final response = await http.post(
-      Uri.parse(
-          '$catalogApiBaseUrl/api/user-catalogs/save-catalog'), // FastAPI UserCatalogRouter
-      headers: _headers, // JWT 토큰 포함
-      body:
-          utf8.encode(jsonEncode({'catalog_id': catalogId})), // 저장할 원본 카탈로그 ID
+      Uri.parse('$catalogApiBaseUrl/api/user-catalogs/save-catalog'),
+      headers: _headers,
+      body: utf8.encode(jsonEncode({'catalog_id': catalogId})),
     );
 
     if (response.statusCode == 200) {
-      // 카탈로그 저장 성공: 복사본 카탈로그 ID 반환
       return _decodeUtf8Response(response);
     } else {
-      // 저장 실패 (중복 저장, 권한 없음 등)
       throw Exception('카탈로그 저장 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
@@ -364,7 +293,7 @@ class ApiService {
     }
   }
 
-  /// 카탈로그 저장 여부 확인 (원본 카탈로그 ID 기준)
+  /// 카탈로그 저장 여부 확인
   Future<Map<String, dynamic>> checkCatalogSaved(
       String originalCatalogId) async {
     final response = await http.get(
@@ -468,24 +397,17 @@ class ApiService {
   }
 
   /**
-   * 아이템 보유 상태 토글 (핵심 기능)
-   * - catalog-api의 /api/items/{itemId}/toggle-owned 엔드포인트 호출
-   * - 사용자가 체크박스 클릭 시 호출되어 owned 상태를 True ↔ False로 변경
-   * - 변경 후 카탈로그의 수집률(completion_rate) 자동 업데이트
-   * - 실시간으로 UI에 반영되어 수집 진행 상황 추적 가능
+   * 아이템 보유 상태 토글
    */
   Future<Map<String, dynamic>> toggleItemOwned(String itemId) async {
     final response = await http.patch(
-      Uri.parse(
-          '$catalogApiBaseUrl/api/items/$itemId/toggle-owned'), // FastAPI ItemRouter
-      headers: _headers, // JWT 토큰 포함
+      Uri.parse('$catalogApiBaseUrl/api/items/$itemId/toggle-owned'),
+      headers: _headers,
     );
 
     if (response.statusCode == 200) {
-      // 상태 토글 성공: 업데이트된 아이템 정보 반환
       return _decodeUtf8Response(response);
     } else {
-      // 토글 실패 (권한 없음, 아이템 없음 등)
       throw Exception('아이템 상태 토글 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
@@ -504,7 +426,7 @@ class ApiService {
 
   // ========== Upload API ==========
 
-  /// 파일 업로드 (웹과 모바일 모두 지원)
+  /// 파일 업로드 (파일 경로 사용 - 모바일/데스크톱)
   Future<Map<String, dynamic>> uploadFile(String filePath) async {
     final request = http.MultipartRequest(
       'POST',
@@ -514,14 +436,7 @@ class ApiService {
     request.headers.addAll(_headers);
 
     try {
-      if (kIsWeb) {
-        // 웹 환경에서는 파일 경로를 직접 사용할 수 없으므로
-        // 이 메서드는 웹에서 사용하지 않고 uploadFileBytes를 사용
-        throw Exception('웹 환경에서는 uploadFileBytes를 사용하세요');
-      } else {
-        // 모바일 환경에서는 파일 경로 사용 가능
-        request.files.add(await http.MultipartFile.fromPath('file', filePath));
-      }
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
     } catch (e) {
       throw Exception('파일 읽기 실패: $e');
     }
@@ -536,7 +451,7 @@ class ApiService {
     }
   }
 
-  /// 파일 업로드 (바이트 배열 사용 - 웹 환경용)
+  /// 파일 업로드 (바이트 배열 사용 - 웹)
   Future<Map<String, dynamic>> uploadFileBytes(
       List<int> fileBytes, String fileName) async {
     final request = http.MultipartRequest(
@@ -546,8 +461,7 @@ class ApiService {
 
     request.headers.addAll(_headers);
 
-    // MIME 타입 추론
-    String contentType = 'image/jpeg'; // 기본값
+    String contentType = 'image/jpeg';
     final extension = fileName.toLowerCase().split('.').last;
     switch (extension) {
       case 'jpg':

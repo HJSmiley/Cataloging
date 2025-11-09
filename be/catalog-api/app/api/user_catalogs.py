@@ -34,8 +34,6 @@ async def get_my_catalogs(
     - 추가/저장 시간순으로 정렬
     """
     try:
-        print(f"=== my-catalogs 호출됨: 사용자 {user_id} ===")
-        
         # 내가 소유한 모든 카탈로그 조회 (원본 + 복사본)
         catalog_query = db.query(
             CatalogDB,
@@ -49,8 +47,6 @@ async def get_my_catalogs(
         ).filter(
             CatalogDB.user_id == user_id
         ).order_by(CatalogDB.created_at.desc()).all()
-        
-        print(f"사용자 {user_id}의 소유 카탈로그 수: {len(catalog_query)}")
         
         result_catalogs = []
         for catalog_record, original_catalog_id in catalog_query:
@@ -73,13 +69,11 @@ async def save_catalog(
     다른 사용자의 카탈로그를 복사하여 내 카탈로그로 저장
     """
     try:
-        print(f"=== 카탈로그 저장 요청 시작: 사용자 {user_id}, 카탈로그 {request.catalog_id} ===")
         logger.info(f"사용자 {user_id}가 카탈로그 {request.catalog_id} 저장 요청")
         
         # 원본 카탈로그 존재 확인
         original_catalog = catalog_crud.get_catalog(db, request.catalog_id)
         if not original_catalog:
-            print(f"카탈로그 {request.catalog_id}를 찾을 수 없음")
             logger.error(f"카탈로그 {request.catalog_id}를 찾을 수 없음")
             raise HTTPException(status_code=404, detail="카탈로그를 찾을 수 없습니다")
         
@@ -123,16 +117,12 @@ async def unsave_catalog(
     - catalog_id는 삭제할 복사본의 ID
     """
     try:
-        print(f"=== 카탈로그 제거 요청: 사용자 {user_id}, 카탈로그 {catalog_id} ===")
-        
         catalog_record = catalog_crud.get_catalog(db, catalog_id)
         if not catalog_record:
             raise HTTPException(status_code=404, detail="카탈로그를 찾을 수 없습니다")
         
         if catalog_record.user_id != user_id:
             raise HTTPException(status_code=403, detail="삭제 권한이 없습니다")
-        
-        print(f"카탈로그 삭제: {catalog_record.title}")
         
         success = user_catalog_crud.unsave_catalog(db, user_id, catalog_id)
         

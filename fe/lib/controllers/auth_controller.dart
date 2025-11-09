@@ -10,11 +10,15 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import '../services/platform_config.dart';
 import 'catalog_controller.dart';
 
 class AuthController extends GetxController {
-  // API 서비스 인스턴스 (user-api 통신용)
-  final ApiService _apiService = ApiService();
+  // API 서비스 인스턴스 (플랫폼별 URL 설정)
+  final ApiService _apiService = ApiService(
+    catalogApiBaseUrl: PlatformConfig.catalogApiUrl,
+    userApiBaseUrl: PlatformConfig.userApiUrl,
+  );
 
   // 반응형 상태 변수들 (GetX .obs로 UI 자동 업데이트)
   final Rx<User?> _user = Rx<User?>(null); // 현재 로그인한 사용자 정보

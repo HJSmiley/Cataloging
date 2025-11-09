@@ -11,7 +11,7 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_controller.dart';
 import '../models/catalog.dart';
-import '../services/api_service.dart';
+import '../services/platform_config.dart';
 import 'explore_screen.dart';
 import 'add_screen.dart';
 import 'my_screen.dart';
@@ -222,7 +222,7 @@ class _CatalogCard extends StatelessWidget {
             Expanded(
               child: catalog.thumbnailUrl != null
                   ? Image.network(
-                      ApiService.getImageUrl(
+                      PlatformConfig.getImageUrl(
                           catalog.thumbnailUrl), // catalog-api 이미지 URL
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {

@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/catalog_controller.dart';
 import '../models/catalog.dart';
-import '../services/api_service.dart';
+import '../services/platform_config.dart';
 import 'catalog_detail_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -251,7 +251,7 @@ class _CatalogListItem extends StatelessWidget {
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
-                                ApiService.getImageUrl(catalog.thumbnailUrl),
+                                PlatformConfig.getImageUrl(catalog.thumbnailUrl),
                                 width: 80,
                                 height: 80,
                                 fit: BoxFit.cover,

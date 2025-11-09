@@ -11,7 +11,7 @@ spring:
     date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
   
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:file:./data/userdb
     driver-class-name: org.h2.Driver
     username: sa
     password: 
@@ -23,7 +23,7 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -65,5 +65,9 @@ jwt:
 
 logging:
   level:
-    com.cataloging.userapi: DEBUG
-    org.springframework.security: DEBUG
+    com.cataloging.userapi: INFO
+    com.cataloging.userapi.config.LoggingFilter: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+  pattern:
+    console: "%msg%n"

@@ -42,9 +42,9 @@ class Settings:
     CORS_HEADERS = os.getenv("CORS_HEADERS", "*").split(",")
     
     # 로깅 설정 - API 통신 로깅
-    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+    # LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = os.getenv("LOG_FILE", "api_communication.log")
-    LOG_FORMAT = os.getenv("LOG_FORMAT", "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    LOG_FORMAT = os.getenv("LOG_FORMAT", "%(message)s")
     
     # 타임존 설정
     TIMEZONE = KST
@@ -58,12 +58,23 @@ def get_kst_now():
 
 def setup_logging():
     """로깅 설정 초기화"""
-    logging.basicConfig(
-        level=getattr(logging, settings.LOG_LEVEL),
-        format=settings.LOG_FORMAT,
-        handlers=[
-            logging.FileHandler(settings.LOG_FILE),  # 파일 로깅
-            logging.StreamHandler()                   # 콘솔 로깅
-        ]
-    )
-    return logging.getLogger("API_COMMUNICATION")
+    logger = logging.getLogger("API_COMMUNICATION")
+    logger.handlers.clear()
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+
+    formatter = logging.Formatter(settings.LOG_FORMAT)
+
+    # 파일
+    file_handler = logging.FileHandler(settings.LOG_FILE)
+    file_handler.setLevel(logging.WARNING)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    # 콘솔
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.WARNING)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    return logger

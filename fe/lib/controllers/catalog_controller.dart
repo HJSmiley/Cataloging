@@ -10,10 +10,14 @@ import 'package:get/get.dart';
 import '../models/catalog.dart';
 import '../models/item.dart';
 import '../services/api_service.dart';
+import '../services/platform_config.dart';
 
 class CatalogController extends GetxController {
-  // API 서비스 인스턴스 (catalog-api 통신용)
-  final ApiService _apiService = ApiService();
+  // API 서비스 인스턴스 (플랫폼별 URL 설정)
+  final ApiService _apiService = ApiService(
+    catalogApiBaseUrl: PlatformConfig.catalogApiUrl,
+    userApiBaseUrl: PlatformConfig.userApiUrl,
+  );
 
   // 반응형 상태 변수들 (GetX .obs로 UI 자동 업데이트)
   final RxList<Catalog> _myCatalogs = <Catalog>[].obs; // 내 카탈로그 목록 (홈 화면)
