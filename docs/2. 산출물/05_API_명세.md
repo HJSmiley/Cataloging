@@ -12,7 +12,8 @@
 
 | 항목 | User API | Catalog API |
 |------|----------|-------------|
-| Base URL | http://localhost:8081 | http://localhost:8002 |
+| Base URL | http://localhost:{PORT} (기본: 8080) | http://localhost:{PORT} (기본: 8000) |
+| 포트 설정 | PORT 환경 변수 | .env 파일의 PORT |
 | Protocol | HTTP/1.1 | HTTP/1.1 |
 | Data Format | JSON (UTF-8) | JSON (UTF-8) |
 | Authentication | JWT Bearer Token | JWT Bearer Token |
@@ -59,7 +60,9 @@ Content-Type: application/json; charset=utf-8
 }
 ```
 
-## 3. User API (Spring Boot - 포트 8081)
+## 3. User API (Spring Boot)
+
+**포트**: 환경 변수 `PORT`로 설정 (기본값: 8080)
 
 ### 3.1 시스템 API
 
@@ -233,7 +236,9 @@ GET /api/users/1
 }
 ```
 
-## 4. Catalog API (FastAPI - 포트 8002)
+## 4. Catalog API (FastAPI)
+
+**포트**: `.env` 파일의 `PORT` 설정 (기본값: 8000)
 
 ### 4.1 시스템 API
 
@@ -806,8 +811,8 @@ Content-Type: application/json
 
 ### 6.1 Swagger UI
 
-- **User API**: http://localhost:8081/swagger-ui.html (향후 추가)
-- **Catalog API**: http://localhost:8002/docs
+- **User API**: http://localhost:8080/swagger-ui.html (향후 추가)
+- **Catalog API**: http://localhost:8000/docs
 
 ### 6.2 Postman Collection
 

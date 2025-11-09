@@ -23,20 +23,23 @@
 
 ### 1. 환경 변수 설정 (선택사항)
 
-`.env.example` 파일을 참고하여 `.env` 파일을 생성하거나 환경 변수를 설정하세요:
+환경 변수를 설정하여 포트 및 OAuth2 설정을 변경할 수 있습니다:
 
 ```bash
-# .env 파일 생성
-cp .env.example .env
+# 포트 설정 (기본값: 8080)
+export PORT=8080
 
-# 또는 환경 변수로 직접 설정
-export PORT=8081
+# OAuth2 클라이언트 정보
 export GOOGLE_CLIENT_ID=your-google-client-id
 export GOOGLE_CLIENT_SECRET=your-google-client-secret
 export NAVER_CLIENT_ID=your-naver-client-id
 export NAVER_CLIENT_SECRET=your-naver-client-secret
+
+# JWT 시크릿 키 (Catalog API와 동일하게 설정)
 export JWT_SECRET=your-jwt-secret-key
 ```
+
+**중요**: `JWT_SECRET`은 Catalog API의 `JWT_SECRET_KEY`와 동일해야 합니다.
 
 ### 2. 애플리케이션 실행
 
@@ -44,39 +47,54 @@ export JWT_SECRET=your-jwt-secret-key
 # 프로젝트 디렉토리로 이동
 cd be/user-api
 
-# Gradle을 사용하여 실행
+# 기본 포트(8080)로 실행
 ./gradlew bootRun
+
+# 또는 포트를 변경하여 실행
+PORT=8081 ./gradlew bootRun
 
 # 또는 JAR 파일 빌드 후 실행
 ./gradlew build
 java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
+
+# JAR 실행 시 포트 변경
+PORT=8081 java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
 ```
+
+**포트 설정**:
+- 기본 포트: 8080
+- 환경 변수 `PORT`로 변경 가능
+- `application.yml`의 `server.port: ${PORT:8080}` 설정 참조
 
 ### 3. H2 데이터베이스 콘솔 접근
 
 개발 중 데이터베이스 상태를 확인하려면:
-- URL: http://localhost:8081/h2-console
+- URL: http://localhost:{PORT}/h2-console (기본: http://localhost:8080/h2-console)
 - JDBC URL: `jdbc:h2:mem:testdb`
 - Username: `sa`
 - Password: (비어있음)
+
+**참고**: 포트를 변경한 경우 URL도 함께 변경됩니다.
 
 ### 4. 개발용 테스트
 
 애플리케이션이 실행되면 다음 명령으로 테스트할 수 있습니다:
 
 ```bash
-# 헬스체크
-curl -X GET http://localhost:8081/api/test/health
+# 헬스체크 (포트는 환경 변수에 따라 변경)
+curl -X GET http://localhost:8080/api/test/health
 
 # 테스트 사용자 생성 및 JWT 토큰 발급
-curl -X POST http://localhost:8081/api/dev/create-user \
+curl -X POST http://localhost:8080/api/dev/create-user \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "nickname": "테스트사용자"}'
 
 # JWT 토큰으로 사용자 정보 조회 (위에서 받은 accessToken 사용)
-curl -X GET http://localhost:8081/api/users/me \
+curl -X GET http://localhost:8080/api/users/me \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+**참고**: 포트를 변경한 경우 (예: PORT=8081), URL의 포트 번호도 함께 변경하세요.
 
 ## API 엔드포인트
 

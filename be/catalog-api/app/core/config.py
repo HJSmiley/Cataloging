@@ -21,7 +21,7 @@ class Settings:
     """애플리케이션 설정 클래스"""
     
     # 서버 설정
-    PORT = int(os.getenv("PORT", "8002"))
+    PORT = int(os.getenv("PORT", "8000"))
     HOST = os.getenv("HOST", "0.0.0.0")
     
     # SQLite 데이터베이스 설정 - 로컬 파일 기반 DB

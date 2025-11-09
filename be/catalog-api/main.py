@@ -67,5 +67,5 @@ if __name__ == "__main__":
     import uvicorn
     # uvicorn ASGI 서버로 FastAPI 앱 실행
     # host: 환경변수에서 설정 (기본값: 0.0.0.0 - 모든 네트워크 인터페이스에서 접근 허용)
-    # port: 환경변수에서 설정 (기본값: 8002 - Flutter에서 localhost:8002로 접근)
+    # port: 환경변수에서 설정 (기본값: 8000 - Flutter에서 localhost:8000로 접근)
     uvicorn.run(app, host=settings.HOST, port=settings.PORT)

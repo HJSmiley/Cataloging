@@ -10,7 +10,12 @@
 .buildlog/
 .history
 
-*.venv
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
 *.vscode
 *.kiro
 

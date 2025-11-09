@@ -51,13 +51,25 @@ catalog-api/
 
 ## 설치 및 실행
 
-### 1. 의존성 설치
+### 1. 가상환경 생성 및 활성화
+
+```bash
+# 가상환경 생성 (최초 1회)
+python3 -m venv .venv
+
+# 가상환경 활성화
+source .venv/bin/activate  # macOS/Linux
+# 또는
+.venv\Scripts\activate     # Windows
+```
+
+### 2. 의존성 설치
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 환경 변수 설정
+### 3. 환경 변수 설정
 
 `.env.example` 파일을 참고하여 `.env` 파일을 생성:
 
@@ -69,7 +81,7 @@ cp .env.example .env
 
 ```env
 # 서버 설정
-PORT=8002
+PORT=8000
 HOST=0.0.0.0
 
 DATABASE_URL=sqlite:///./catalog.db
@@ -86,25 +98,31 @@ LOG_LEVEL=INFO
 LOG_FILE=api_communication.log
 ```
 
-### 3. 서버 실행
+### 4. 서버 실행
 
 ```bash
+# .env 파일에서 포트 설정 확인/수정
+# PORT=8000 (기본값)
+
 # 개발 서버 실행 (환경 변수에서 포트 설정 사용)
 python main.py
 
-# 또는 uvicorn 직접 실행 (포트 변경 가능)
-uvicorn main:app --host 0.0.0.0 --port 8002 --reload
+# 또는 uvicorn 직접 실행 (포트 지정)
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# 또는 환경 변수로 포트 지정
+# 또는 환경 변수로 포트 임시 변경
 PORT=8003 python main.py
 ```
 
-서버는 기본적으로 `http://localhost:8002`에서 실행됩니다 (PORT 환경 변수로 변경 가능).
+서버는 `.env` 파일의 `PORT` 설정에 따라 실행됩니다 (기본값: 8000).
 
-### 4. API 문서 확인
+### 5. API 문서 확인
 
-- Swagger UI: `http://localhost:8002/docs`
-- ReDoc: `http://localhost:8002/redoc`
+- Swagger UI: `http://localhost:{PORT}/docs` (기본: http://localhost:8000/docs)
+- ReDoc: `http://localhost:{PORT}/redoc` (기본: http://localhost:8000/redoc)
+- Health Check: `http://localhost:{PORT}/health`
+
+포트는 `.env` 파일의 `PORT` 설정을 따릅니다.
 
 ## API 엔드포인트
 

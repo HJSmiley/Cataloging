@@ -5,7 +5,7 @@ package com.cataloging.userapi;
  * - 사용자 인증 및 프로필 관리 API 서버
  * - Flutter 앱의 인증 요청을 처리
  * - JWT 토큰 기반 인증 시스템
- * - 포트 8081에서 실행 (Catalog-API는 8000)
+ * - 포트 8080에서 실행 (Catalog-API는 8000)
  */
 
 import org.springframework.boot.SpringApplication;

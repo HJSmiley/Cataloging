@@ -47,8 +47,8 @@ Flutter 클라이언트와 FastAPI 서버 간의 통신 구조와 테스트 결�
 - 데이터 무결성 및 백업 전략
 
 #### 2.5 [API 명세](./2.%20산출물/05_API_명세.md)
-- User API 엔드포인트 (Spring Boot, 포트 8081)
-- Catalog API 엔드포인트 (FastAPI, 포트 8002)
+- User API 엔드포인트 (Spring Boot, 포트 8080)
+- Catalog API 엔드포인트 (FastAPI, 포트 8000)
 - **JWT 인증 흐름**
 - 요청/응답 예시
 - 에러 처리
@@ -174,27 +174,27 @@ Flutter 클라이언트와 FastAPI 서버 간의 통신 구조와 테스트 결�
 ```bash
 cd be/user-api
 ./gradlew bootRun
-# 포트: 8081
-# 헬스체크: http://localhost:8081/api/test/health
+# 포트: 8080 (기본값, PORT 환경 변수로 변경 가능)
+# 헬스체크: http://localhost:8080/api/test/health
 ```
 
 ### 2. Catalog API 실행 (FastAPI)
 ```bash
 cd be/catalog-api
 # Python 가상환경 활성화 (이미 생성된 경우)
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # 또는 새로 생성
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 # 의존성 설치
 pip install -r requirements.txt
 # 서버 실행
 python main.py
 # 또는 uvicorn으로 실행
-uvicorn main:app --host 0.0.0.0 --port 8002 --reload
-# 포트: 8002
-# 헬스체크: http://localhost:8002/health
-# API 문서: http://localhost:8002/docs
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# 포트: 8000 (기본값, .env 파일의 PORT로 변경 가능)
+# 헬스체크: http://localhost:8000/health
+# API 문서: http://localhost:8000/docs
 ```
 
 ### 3. Flutter 클라이언트 실행
@@ -222,7 +222,7 @@ cataloging/
 ├── .venv/                       # Python 가상환경
 ├── .vscode/                     # VSCode 설정
 ├── be/                          # 백엔드 (Spring Boot + FastAPI)
-│   ├── user-api/               # Spring Boot 회원 API (포트 8081)
+│   ├── user-api/               # Spring Boot 회원 API (포트 8080)
 │   └── catalog-api/            # FastAPI 카탈로그 API (포트 8000)
 ├── fe/                          # 프론트엔드 (Flutter, 포트 3000)
 ├── docs/                        # 프로젝트 문서

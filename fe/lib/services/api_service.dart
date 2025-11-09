@@ -15,35 +15,35 @@ import 'package:flutter/foundation.dart';
 class ApiService {
   /**
    * 플랫폼별 Catalog API 베이스 URL 설정
-   * - 웹: localhost:8002 (개발 서버 직접 접근)
-   * - 안드로이드: 10.0.2.2:8002 (에뮬레이터 호스트 매핑)
-   * - iOS: localhost:8002 (시뮬레이터는 호스트와 네트워크 공유)
+   * - 웹: localhost:8000 (개발 서버 직접 접근)
+   * - 안드로이드: 10.0.2.2:8000 (에뮬레이터 호스트 매핑)
+   * - iOS: localhost:8000 (시뮬레이터는 호스트와 네트워크 공유)
    */
   static String get catalogApiBaseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8002'; // 웹 브라우저
+      return 'http://localhost:8000'; // 웹 브라우저
     } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8002'; // 안드로이드 에뮬레이터 (특수 IP)
+      return 'http://10.0.2.2:8000'; // 안드로이드 에뮬레이터 (특수 IP)
     } else if (Platform.isIOS) {
-      return 'http://localhost:8002'; // iOS 시뮬레이터
+      return 'http://localhost:8000'; // iOS 시뮬레이터
     } else {
-      return 'http://localhost:8002'; // 기타 플랫폼 (macOS, Windows 등)
+      return 'http://localhost:8000'; // 기타 플랫폼 (macOS, Windows 등)
     }
   }
 
   /**
    * 플랫폼별 User API 베이스 URL 설정
-   * - catalog-api와 동일한 패턴으로 포트만 8081로 변경
+   * - catalog-api와 동일한 패턴으로 포트만 8080로 변경
    */
   static String get userApiBaseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8081'; // 웹 브라우저
+      return 'http://localhost:8080'; // 웹 브라우저
     } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8081'; // 안드로이드 에뮬레이터
+      return 'http://10.0.2.2:8080'; // 안드로이드 에뮬레이터
     } else if (Platform.isIOS) {
-      return 'http://localhost:8081'; // iOS 시뮬레이터
+      return 'http://localhost:8080'; // iOS 시뮬레이터
     } else {
-      return 'http://localhost:8081'; // 기타 플랫폼
+      return 'http://localhost:8080'; // 기타 플랫폼
     }
   }
 

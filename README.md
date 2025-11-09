@@ -60,10 +60,11 @@
 - 소유권 및 저장 여부 확인
 
 ✅ **마이크로서비스 아키텍처**
-- User API (Spring Boot, 포트 8081): 인증 및 사용자 관리
-- Catalog API (FastAPI, 포트 8002): 카탈로그 및 아이템 관리
-- Flutter 클라이언트 (포트 3000): 웹 기반 UI
+- User API (Spring Boot): 인증 및 사용자 관리
+- Catalog API (FastAPI): 카탈로그 및 아이템 관리
+- Flutter 클라이언트: 웹 기반 UI
 - JWT 기반 통합 인증
+- 포트 번호는 환경 변수로 관리 (기본값: User API 8080, Catalog API 8000, Flutter 3000)
 
 ✅ **개발 인프라**
 - 완전한 API 통신 로깅 시스템
@@ -130,14 +131,19 @@ docs/
 
 **마이크로서비스 구조**
 ```
-Flutter Client (포트 3000)
+Flutter Client
     ↓ HTTP/REST API
-    ├─→ User API (Spring Boot, 포트 8081)
+    ├─→ User API (Spring Boot)
     │   └─→ H2 Database
     │
-    └─→ Catalog API (FastAPI, 포트 8002)
+    └─→ Catalog API (FastAPI)
         └─→ SQLite Database
 ```
+
+**포트 설정**
+- User API: `PORT` 환경 변수 (기본값: 8080)
+- Catalog API: `PORT` 환경 변수 (기본값: 8000)
+- Flutter Client: `--web-port` 옵션 (기본값: 3000)
 
 **주요 특징**
 - JWT 기반 통합 인증 (두 API 서버 간 동일한 시크릿 키)
@@ -165,11 +171,11 @@ cataloging/
 ├── .git/                        # Git 버전 관리
 ├── .kiro/                       # Kiro AI 설정
 │   └── specs/                   # 프로젝트 스펙 문서
-├── .venv/                       # Python 가상환경
 ├── .vscode/                     # VSCode 설정
 ├── be/                          # 백엔드
-│   ├── user-api/               # Spring Boot (포트 8081)
-│   └── catalog-api/            # FastAPI (포트 8002)
+│   ├── user-api/               # Spring Boot (포트: PORT 환경 변수, 기본 8080)
+│   └── catalog-api/            # FastAPI (포트: PORT 환경 변수, 기본 8000)
+│       └── .venv/              # Python 가상환경 (catalog-api 전용)
 ├── fe/                          # Flutter 클라이언트 (포트 3000)
 ├── docs/                        # 프로젝트 문서
 │   ├── 0. 문제분석/             # 요구사항 분석
@@ -305,25 +311,45 @@ be/catalog-api/
 ### 1. User API 실행 (Spring Boot)
 ```bash
 cd be/user-api
+
+# 기본 포트(8080)로 실행
 ./gradlew bootRun
-# 포트: 8081
-# Health check: http://localhost:8081/api/test/health
+
+# 또는 포트 변경하여 실행
+PORT=8080 ./gradlew bootRun
+
+# Health check (포트는 설정에 따라 변경)
+# 기본: http://localhost:8080/api/test/health
+# 변경 시: http://localhost:8081/api/test/health
 ```
 
 ### 2. Catalog API 실행 (FastAPI)
 ```bash
 cd be/catalog-api
-# Python 가상환경 활성화
-source venv/bin/activate  # Windows: venv\Scripts\activate
-# 의존성 설치
+
+# 가상환경 생성 (최초 1회만)
+python3 -m venv .venv
+
+# 가상환경 활성화
+source .venv/bin/activate  # macOS/Linux
+# 또는
+.venv\Scripts\activate     # Windows
+
+# 의존성 설치 (최초 1회 또는 requirements.txt 변경 시)
 pip install -r requirements.txt
+
+# .env 파일에서 포트 설정 (기본값: 8000)
+# PORT=8000 또는 원하는 포트로 변경
+
 # 서버 실행
 python main.py
-# 또는 uvicorn으로 직접 실행
-uvicorn main:app --host 0.0.0.0 --port 8002 --reload
-# 포트: 8002
-# Health check: http://localhost:8002/health
-# API 문서: http://localhost:8002/docs
+
+# 또는 uvicorn으로 직접 실행 (포트 지정)
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Health check (포트는 .env 설정에 따라 변경)
+# 기본: http://localhost:8000/health
+# API 문서: http://localhost:8000/docs
 ```
 
 ### 3. Flutter 클라이언트 실행
@@ -376,11 +402,15 @@ flutter run -d macos    # macOS Desktop
 
 ### 현재 (로컬 개발)
 ```
-- Flutter 클라이언트: http://localhost:3000
-- User API: http://localhost:8081
-- Catalog API: http://localhost:8002
+- Flutter 클라이언트: http://localhost:3000 (기본값)
+- User API: 환경 변수 PORT로 설정 (기본값: 8080)
+- Catalog API: 환경 변수 PORT로 설정 (기본값: 8000)
 - 데이터베이스: H2 (인메모리), SQLite (파일)
 ```
+
+**포트 설정 방법**
+- User API: `application.yml`의 `server.port` 또는 `PORT` 환경 변수 (기본: 8080)
+- Catalog API: `.env` 파일의 `PORT` 설정 (기본: 8000)
 
 ### 향후 (프로덕션)
 ```
