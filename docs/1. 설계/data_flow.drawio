@@ -1,0 +1,166 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" version="28.2.9">
+  <diagram name="데이터 흐름도" id="data-flow-diagram">
+    <mxGraphModel dx="1577" dy="1220" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="카탈로깅 시스템 데이터 흐름도" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="340" y="20" width="480" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="flutter" value="Flutter Client&#xa;(Web/Mobile)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFFFF;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="480" y="100" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="user-api" value="User API&lt;br&gt;(Spring Boot)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6FFCC;strokeColor=#82b366;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="200" y="280" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="catalog-api" value="Catalog API&lt;br&gt;(FastAPI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="760" y="280" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="h2-db" value="H2 Database&lt;div&gt;(Embedded,&lt;/div&gt;&lt;div&gt;File-mode)&lt;/div&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="240" y="480" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sqlite-db" value="SQLite Database&#xa;(catalog.db)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="800" y="480" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="login-1" value="1. 로그인 요청&#xa;(email, password)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066CC;fontSize=11;" parent="1" source="flutter" target="user-api" edge="1">
+          <mxGeometry x="0.0002" y="-30" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="520" y="230" />
+              <mxPoint x="300" y="230" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="login-2" value="2. JWT 토큰 발급" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00CC66;fontSize=11;dashed=1;" parent="1" edge="1">
+          <mxGeometry x="-0.0667" y="-20" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="240" />
+              <mxPoint x="540" y="240" />
+            </Array>
+            <mxPoint as="offset" />
+            <mxPoint x="339.9696969696971" y="280" as="sourcePoint" />
+            <mxPoint x="540.030303030303" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="user-db-conn" value="JPA/Hibernate&#xa;(사용자 CRUD)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;fontSize=10;startArrow=classic;startFill=1;" parent="1" source="user-api" target="h2-db" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="catalog-1" value="3. 카탈로그 조회&#xa;(JWT 토큰 포함)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066CC;fontSize=11;" parent="1" source="flutter" target="catalog-api" edge="1">
+          <mxGeometry x="-0.0002" y="30" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="230" />
+              <mxPoint x="860" y="230" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="catalog-2" value="4. 카탈로그 데이터&#xa;+ 수집률" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00CC66;fontSize=11;dashed=1;" parent="1" source="catalog-api" target="flutter" edge="1">
+          <mxGeometry x="-0.0667" y="30" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="820" y="240" />
+              <mxPoint x="620" y="240" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="catalog-db-conn" value="SQLAlchemy ORM&lt;br&gt;(카탈로그 CRUD)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#666666;fontSize=10;startArrow=classic;startFill=1;" parent="1" source="catalog-api" target="sqlite-db" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tables-title" value="데이터베이스 테이블" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="80" y="640" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h2-tables" value="&lt;b&gt;H2 Database&lt;/b&gt;&lt;br&gt;• users (사용자 정보)&lt;br&gt;  - id, email, password&lt;br&gt;  - username, profile_image,&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;introduction&lt;/span&gt;&lt;div&gt;- provider, provider_id (SNS 로그인)&lt;/div&gt;&lt;div&gt;- status&lt;/div&gt;&lt;div&gt;  - created_at, updated_at&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;fontSize=11;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="80" y="680" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="sqlite-tables" value="&lt;b&gt;SQLite Database&lt;/b&gt;&lt;br&gt;• catalogs (카탈로그)&lt;br&gt;  - catalog_id, user_id, title&lt;br&gt;  - description, category, tags&lt;br&gt;  - visibility, thumbnail_url&lt;br&gt;- created_at, updated_at&lt;div&gt;&lt;br&gt;• items (아이템)&lt;br&gt;  - item_id, catalog_id, name&lt;br&gt;  - description, image_url, user_fields&lt;br&gt;- created_at, updated_at&lt;div&gt;&lt;br&gt;• user_item_status (보유 상태)&lt;br&gt;  - id, user_id, item_id, owned&lt;div&gt;- created_at, updated_at&lt;br&gt;&lt;br&gt;• user_catalogs (저장 관계)&lt;br&gt;  - id, user_id&lt;div&gt;- original_catalog_id, copied_catalog_id&lt;/div&gt;&lt;div&gt;- saved_at&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;align=left;fontSize=11;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="360" y="680" width="280" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="flow-title" value="주요 데이터 흐름" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="680" y="640" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="jwt-box" value="&lt;b&gt;JWT 인증 통합&lt;/b&gt;&lt;br&gt;• User API에서 JWT 토큰 발급&lt;br&gt;• Catalog API에서 토큰 검증&lt;br&gt;• 동일한 SECRET_KEY 사용&lt;br&gt;• 알고리즘: HS256&lt;br&gt;• 토큰에서 user_id 추출" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;fontSize=11;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="80" y="840" width="240" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-title" value="범례" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="1100" y="100" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-request" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#0066CC;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1100" y="150" as="sourcePoint" />
+            <mxPoint x="1180" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-request-text" value="HTTP 요청" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" parent="1" vertex="1">
+          <mxGeometry x="1190" y="135" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-response" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#00CC66;dashed=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1100" y="190" as="sourcePoint" />
+            <mxPoint x="1180" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-response-text" value="HTTP 응답" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" parent="1" vertex="1">
+          <mxGeometry x="1190" y="175" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-db" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666;startArrow=classic;startFill=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1100" y="230" as="sourcePoint" />
+            <mxPoint x="1180" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-db-text" value="DB 연결" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" parent="1" vertex="1">
+          <mxGeometry x="1190" y="215" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-jwt" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#d79b00;dashed=1;dashPattern=8 8;startArrow=classic;startFill=1;fillColor=#ffe6cc;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1100" y="270" as="sourcePoint" />
+            <mxPoint x="1180" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-jwt-text" value="JWT 검증" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11" parent="1" vertex="1">
+          <mxGeometry x="1190" y="255" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="jwt-verify-arrow" value="JWT 토큰 검증&lt;br&gt;(공유 SECRET_KEY)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d79b00;fontSize=10;dashed=1;dashPattern=8 8;startArrow=classic;startFill=1;fillColor=#ffe6cc;" parent="1" source="catalog-api" target="user-api" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="330" />
+              <mxPoint x="400" y="330" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jwt-verify-box" value="&lt;b&gt;마이크로서비스 간 인증&lt;/b&gt;&lt;br&gt;• Catalog API가 JWT 토큰 검증&lt;br&gt;• User API와 동일한 SECRET_KEY 공유&lt;br&gt;• 토큰에서 user_id 추출하여 사용&lt;br&gt;• 직접 통신 없이 독립적 검증" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;fontSize=10;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="440" y="400" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="user-info-request" value="5. 사용자 정보 요청&lt;br&gt;GET /api/users/{user_id}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066CC;fontSize=10;" parent="1" edge="1">
+          <mxGeometry y="20" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="520" y="350" />
+              <mxPoint x="520" y="350" />
+            </Array>
+            <mxPoint as="offset" />
+            <mxPoint x="760" y="350" as="sourcePoint" />
+            <mxPoint x="400" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="user-info-response" value="6. 사용자 닉네임 응답&lt;br&gt;{nickname: &quot;...&quot;}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00CC66;fontSize=10;dashed=1;" parent="1" edge="1">
+          <mxGeometry y="20" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="510" y="309.6" />
+              <mxPoint x="510" y="309.6" />
+            </Array>
+            <mxPoint as="offset" />
+            <mxPoint x="400" y="309.6" as="sourcePoint" />
+            <mxPoint x="760" y="309.6" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="http-comm-box" value="&lt;b&gt;API 간 HTTP 통신&lt;/b&gt;&lt;br&gt;• 공개 카탈로그 조회 시 발생&lt;br&gt;• Catalog API → User API&lt;br&gt;• 생성자 닉네임 데이터 조회" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCFFFF;strokeColor=#0066CC;align=left;fontSize=10;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="440" y="510" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="flow-desc-updated" value="&lt;b&gt;1. 사용자 인증 흐름&lt;/b&gt;&lt;br&gt;Flutter → User API → H2 DB&lt;br&gt;• 로그인/회원가입&lt;br&gt;• JWT 토큰 발급&lt;br&gt;• 프로필 관리&lt;br&gt;&lt;br&gt;&lt;b&gt;2. 카탈로그 관리 흐름&lt;/b&gt;&lt;br&gt;Flutter → Catalog API → SQLite&lt;br&gt;• 카탈로그 CRUD&lt;br&gt;• JWT 토큰으로 user_id 추출&lt;br&gt;• 공개/비공개 설정&lt;br&gt;&lt;br&gt;&lt;b&gt;3. 아이템 관리 흐름&lt;/b&gt;&lt;br&gt;Flutter → Catalog API → SQLite&lt;br&gt;• 아이템 CRUD&lt;br&gt;• 보유 상태 토글&lt;br&gt;• 수집률 실시간 계산&lt;br&gt;&lt;br&gt;&lt;b&gt;4. 공개 카탈로그 조회 흐름&lt;/b&gt;&lt;br&gt;Flutter → Catalog API → SQLite&lt;br&gt;Catalog API → User API (HTTP)&lt;br&gt;• 공개 카탈로그 목록 조회&lt;br&gt;• 생성자 닉네임 조회 (HTTP GET)&lt;br&gt;• 카탈로그 + 닉네임 응답" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;fontSize=11;verticalAlign=top;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="680" y="680" width="400" height="370" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

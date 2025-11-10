@@ -377,7 +377,7 @@ Future<void> savePublicCatalog() async {
 
   printClientStateUpdate('카탈로그 저장 완료', {
     'original_catalog_id': catalogId,
-    'saved_catalog_id': savedData['catalog_id'],
+    'saved_catalog_id': savedData['copied_catalog_id'],
     'title': catalog.title,
   });
 }
