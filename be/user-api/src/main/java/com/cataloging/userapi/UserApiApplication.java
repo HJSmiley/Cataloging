@@ -10,8 +10,9 @@ package com.cataloging.userapi;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration;
 
-@SpringBootApplication  // Spring Boot 자동 설정 활성화
+@SpringBootApplication(exclude = {OAuth2ClientAutoConfiguration.class})  // Spring Security OAuth2 자동 설정 비활성화
 public class UserApiApplication {
 
     /**

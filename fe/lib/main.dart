@@ -10,14 +10,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/catalog_controller.dart';
+import 'services/google_sign_in_service.dart';
 import 'screens/splash_screen.dart';
 
 /**
  * 앱 시작점
  * - Flutter 프레임워크 초기화
+ * - WebView 플랫폼 초기화
  * - MyApp 위젯을 루트로 설정
  */
 void main() {
+  // WebView 플랫폼 초기화 (Android/iOS)
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MyApp());
 }
 
@@ -32,7 +37,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1단계: GetX 전역 컨트롤러 초기화
+    // 1단계: GetX 전역 서비스 및 컨트롤러 초기화
+    // GoogleSignInService: Google 네이티브 로그인
+    Get.put(GoogleSignInService());
     // AuthController: 사용자 인증 상태 관리 (user-api 연동)
     Get.put(AuthController());
     // CatalogController: 카탈로그 데이터 관리 (catalog-api 연동)

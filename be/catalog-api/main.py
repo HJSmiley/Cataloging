@@ -7,7 +7,7 @@ Catalog-API 메인 서버 파일 (Python FastAPI)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api import catalogs, items, upload, user_catalogs
+from app.api import catalogs, items, upload, user_catalogs, users
 from app.models import init_db
 from app.core.config import settings, setup_logging
 from app.core.middleware import log_requests_middleware
@@ -44,6 +44,7 @@ app.include_router(catalogs.router, prefix="/api/catalogs", tags=["catalogs"])  
 app.include_router(items.router, prefix="/api/items", tags=["items"])           # 아이템 CRUD
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])        # 파일 업로드
 app.include_router(user_catalogs.router, prefix="/api/user-catalogs", tags=["user-catalogs"])  # 사용자 카탈로그 관리
+app.include_router(users.router, prefix="/api/users", tags=["users"])          # 사용자 관리
 
 # 서버 시작 시 실행되는 이벤트 핸들러
 @app.on_event("startup")

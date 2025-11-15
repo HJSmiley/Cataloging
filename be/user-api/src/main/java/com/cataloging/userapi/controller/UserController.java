@@ -12,9 +12,11 @@ import com.cataloging.userapi.entity.User;
 import com.cataloging.userapi.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -73,10 +75,38 @@ public class UserController {
      * 특정 사용자 정보 조회 (공개 프로필)
      * - 다른 사용자의 공개 프로필 조회
      * - 카탈로그 작성자 정보 표시용
+     * - 탈퇴한 사용자 조회 시 특별한 응답 반환
      */
     @GetMapping("/{userId}")
     public ResponseEntity<UserDto.Response> getUser(@PathVariable Long userId) {
-        User user = userService.getUserById(userId);
-        return ResponseEntity.ok(UserDto.Response.from(user));
+        try {
+            User user = userService.getUserById(userId);
+            
+            // 탈퇴한 사용자인 경우
+            if (user.getStatus() == User.UserStatus.DELETED) {
+                // 탈퇴한 사용자 정보를 익명으로 표시
+                UserDto.Response deletedUserResponse = UserDto.Response.builder()
+                    .id(user.getId())
+                    .email("deleted@user.com")
+                    .nickname("탈퇴한 사용자")
+                    .introduction("탈퇴한 사용자입니다.")
+                    .profileImage(null)
+                    .createdAt(user.getCreatedAt())
+                    .updatedAt(user.getUpdatedAt())
+                    .build();
+                
+                return ResponseEntity.ok(deletedUserResponse);
+            }
+            
+            // 정상 사용자
+            return ResponseEntity.ok(UserDto.Response.from(user));
+            
+        } catch (IllegalArgumentException e) {
+            // 존재하지 않는 사용자
+            throw new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "존재하지 않는 사용자입니다."
+            );
+        }
     }
 }

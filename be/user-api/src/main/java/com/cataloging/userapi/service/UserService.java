@@ -28,75 +28,9 @@ public class UserService {
     
     // 의존성 주입: 사용자 데이터 접근 객체
     private final UserRepository userRepository;
+    private final CatalogApiService catalogApiService;
     
-    /**
-     * OAuth2 소셜 로그인 사용자 처리
-     * - Google, Naver 등 소셜 로그인 성공 시 호출
-     * - 기존 사용자면 정보 업데이트, 신규 사용자면 계정 생성
-     * - OAuth2SuccessHandler에서 호출
-     */
-    public User processOAuth2User(String provider, OAuth2User oAuth2User) {
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-        
-        String providerId;
-        String email;
-        String nickname;
-        String profileImage = null;
-        
-        // 1단계: OAuth2 제공자별 사용자 정보 추출
-        switch (provider.toLowerCase()) {
-            case "google":
-                // Google OAuth2 응답 구조에 맞춰 정보 추출
-                providerId = (String) attributes.get("sub");        // Google 고유 ID
-                email = (String) attributes.get("email");           // 이메일
-                nickname = (String) attributes.get("name");         // 표시명
-                profileImage = (String) attributes.get("picture");  // 프로필 이미지
-                break;
-                
-            case "naver":
-                // Naver OAuth2 응답 구조에 맞춰 정보 추출 (response 객체 내부)
-                @SuppressWarnings("unchecked")
-                Map<String, Object> response = (Map<String, Object>) attributes.get("response");
-                providerId = (String) response.get("id");           // Naver 고유 ID
-                email = (String) response.get("email");             // 이메일
-                nickname = (String) response.get("name");           // 표시명
-                profileImage = (String) response.get("profile_image");  // 프로필 이미지
-                break;
-                
-            default:
-                throw new IllegalArgumentException("지원하지 않는 OAuth2 제공자입니다: " + provider);
-        }
-        
-        log.debug("OAuth2 사용자 정보 추출: provider={}, providerId={}, email={}, nickname={}", 
-                 provider, providerId, email, nickname);
-        
-        // 2단계: 기존 사용자 확인 (제공자 + 제공자 ID 조합으로 검색)
-        Optional<User> existingUser = userRepository.findByProviderAndProviderId(provider, providerId);
-        
-        if (existingUser.isPresent()) {
-            // 3-A단계: 기존 사용자 정보 업데이트 (최신 정보로 동기화)
-            User user = existingUser.get();
-            user.setEmail(email);
-            user.setNickname(nickname);
-            if (profileImage != null) {
-                user.setProfileImage(profileImage);
-            }
-            return userRepository.save(user);
-        } else {
-            // 3-B단계: 새 사용자 계정 생성
-            User newUser = User.builder()
-                    .provider(provider)                     // OAuth2 제공자 (google, naver 등)
-                    .providerId(providerId)                 // 제공자별 고유 ID
-                    .email(email)                          // 이메일
-                    .nickname(nickname)                    // 닉네임
-                    .profileImage(profileImage)            // 프로필 이미지 URL
-                    .status(User.UserStatus.ACTIVE)        // 활성 상태
-                    .build();
-            
-            return userRepository.save(newUser);
-        }
-    }
-    
+
     /**
      * 사용자 ID로 사용자 조회
      * - JWT 토큰에서 추출한 사용자 ID로 프로필 조회
@@ -105,7 +39,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User getUserById(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("탈퇴했거나 존재하지 않는 사용자입니다."));
     }
     
     /**
@@ -131,14 +65,80 @@ public class UserService {
     }
     
     /**
-     * 회원 탈퇴 처리
-     * - 실제 삭제가 아닌 상태를 DELETED로 변경 (소프트 삭제)
-     * - 데이터 복구 및 참조 무결성 유지
+     * 회원 탈퇴 처리 (소프트 삭제)
+     * - 상태만 DELETED로 변경 (데이터는 유지)
+     * - 카탈로그/아이템은 유지
+     * - 데이터 복구 가능 및 참조 무결성 유지
+     * - 재가입 시 기존 데이터 재활성화 가능
      */
     public void deleteUser(Long userId) {
         User user = getUserById(userId);
-        user.setStatus(User.UserStatus.DELETED);  // 상태만 변경
+        user.setStatus(User.UserStatus.DELETED);
         userRepository.save(user);
+        
+        log.info("사용자 소프트 삭제 완료: userId={}, email={}", userId, user.getEmail());
+        log.info("카탈로그/아이템은 유지됨");
+    }
+    
+    /**
+     * 회원 탈퇴 처리 (하드 삭제) - 사용하지 않음
+     * - DB에서 사용자 데이터 완전 삭제
+     * - 주의: 삭제 후 복구 불가능
+     */
+    public void hardDeleteUser(Long userId) {
+        User user = getUserById(userId);
+        userRepository.delete(user);
+        log.info("사용자 데이터 완전 삭제 완료: userId={}, email={}", userId, user.getEmail());
+    }
+    
+
+    /**
+     * OAuth2 사용자 처리 (통합 메서드)
+     * - Google, Naver 등 모든 OAuth2 제공자에서 사용
+     * - 기존 사용자: 이메일만 업데이트 (닉네임/프로필 이미지는 사용자가 수정한 것 유지)
+     * - 신규 사용자: OAuth2 제공자 정보로 계정 생성
+     * - 탈퇴 후 재가입: OAuth2 제공자 정보로 다시 초기화
+     */
+    public User processOAuthUser(String provider, String providerId, String email, String name, String picture) {
+        log.info("{} OAuth2 사용자 처리: providerId={}, email={}, name={}", provider, providerId, email, name);
+        
+        // 기존 사용자 확인
+        Optional<User> existingUser = userRepository.findByProviderAndProviderId(provider, providerId);
+        
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            
+            // 탈퇴한 사용자가 재가입하는 경우
+            if (user.getStatus() == User.UserStatus.DELETED) {
+                log.info("탈퇴한 사용자 재가입: userId={}, 정보 재설정", user.getId());
+                // 탈퇴 후 재가입 시 OAuth2 제공자 정보로 다시 초기화
+                user.setEmail(email);
+                user.setNickname(name);
+                user.setProfileImage(picture);
+                user.setStatus(User.UserStatus.ACTIVE);
+                user.setIntroduction(null); // 자기소개 초기화
+                return userRepository.save(user);
+            }
+            
+            // 기존 활성 사용자: 이메일만 업데이트
+            // 닉네임과 프로필 이미지는 사용자가 직접 수정한 것을 유지
+            user.setEmail(email);
+            log.info("기존 사용자 로그인: userId={}, 기존 닉네임 유지={}", user.getId(), user.getNickname());
+            return userRepository.save(user);
+        } else {
+            // 새 사용자 생성: OAuth2 제공자 정보 사용
+            User newUser = User.builder()
+                    .provider(provider)
+                    .providerId(providerId)
+                    .email(email)
+                    .nickname(name)
+                    .profileImage(picture)
+                    .status(User.UserStatus.ACTIVE)
+                    .build();
+            
+            log.info("신규 사용자 생성: email={}, nickname={}", email, name);
+            return userRepository.save(newUser);
+        }
     }
     
     /**
@@ -146,6 +146,7 @@ public class UserService {
      * - OAuth2 없이 이메일/닉네임만으로 로그인
      * - 개발 및 테스트 환경에서 사용
      * - AuthController.devLogin()에서 호출
+     * - Google 네이티브 로그인에서도 사용 (임시)
      */
     public User processDevUser(String email, String nickname) {
         log.debug("개발용 사용자 처리: email={}, nickname={}", email, nickname);
@@ -154,10 +155,21 @@ public class UserService {
         Optional<User> existingUser = userRepository.findByProviderAndProviderId("dev", email);
         
         if (existingUser.isPresent()) {
-            // 2-A단계: 기존 사용자 정보 업데이트
             User user = existingUser.get();
-            user.setNickname(nickname);  // 닉네임만 업데이트
-            return userRepository.save(user);
+            
+            // 탈퇴한 사용자가 재가입하는 경우
+            if (user.getStatus() == User.UserStatus.DELETED) {
+                log.info("탈퇴한 사용자 재가입: userId={}, 정보 재설정", user.getId());
+                user.setNickname(nickname);
+                user.setStatus(User.UserStatus.ACTIVE);
+                user.setIntroduction(null);
+                user.setProfileImage(null); // 프로필 이미지 초기화
+                return userRepository.save(user);
+            }
+            
+            // 기존 활성 사용자: 정보 유지 (닉네임 업데이트 안 함)
+            log.info("기존 사용자 로그인: userId={}, 기존 정보 유지", user.getId());
+            return user; // 저장하지 않고 그대로 반환
         } else {
             // 2-B단계: 새 개발용 사용자 생성
             User newUser = User.builder()
@@ -168,6 +180,7 @@ public class UserService {
                     .status(User.UserStatus.ACTIVE)  // 활성 상태
                     .build();
             
+            log.info("신규 개발용 사용자 생성: email={}, nickname={}", email, nickname);
             return userRepository.save(newUser);
         }
     }

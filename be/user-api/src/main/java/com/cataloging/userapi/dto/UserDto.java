@@ -1,6 +1,7 @@
 package com.cataloging.userapi.dto;
 
 import com.cataloging.userapi.entity.User;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +21,11 @@ public class UserDto {
         private String nickname;
         private String introduction;
         private String profileImage;
+        
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime createdAt;
+        
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         private LocalDateTime updatedAt;
         
         public static Response from(User user) {

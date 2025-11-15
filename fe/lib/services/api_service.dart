@@ -57,6 +57,57 @@ class ApiService {
   // ========== User API (Spring Boot) 연동 ==========
 
   /**
+   * OAuth2 인증 URL 요청
+   * - 플랫폼 정보를 헤더로 전달하여 올바른 Callback URL 생성
+   */
+  Future<Map<String, dynamic>> getOAuthUrl(String provider) async {
+    // 플랫폼별 User-Agent 설정
+    final headers = {'Content-Type': 'application/json'};
+
+    // Android인 경우 명시적으로 표시
+    if (userApiBaseUrl.contains('10.0.2.2')) {
+      // Android 에뮬레이터
+      headers['User-Agent'] = 'Cataloging-Android';
+    } else {
+      // iOS 또는 기타
+      headers['User-Agent'] = 'Cataloging-iOS';
+    }
+
+    final response = await http.get(
+      Uri.parse('$userApiBaseUrl/api/auth/oauth/$provider/url'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      return _decodeUtf8Response(response);
+    } else {
+      throw Exception('OAuth URL 요청 실패: ${utf8.decode(response.bodyBytes)}');
+    }
+  }
+
+  /**
+   * OAuth2 콜백 처리
+   * Backend에서 Authorization Code를 처리하고 JWT 반환
+   */
+  Future<Map<String, dynamic>> handleOAuthCallback(
+    String provider,
+    String code,
+    String state,
+  ) async {
+    final response = await http.get(
+      Uri.parse(
+          '$userApiBaseUrl/api/auth/oauth2/$provider/callback?code=$code&state=$state'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return _decodeUtf8Response(response);
+    } else {
+      throw Exception('OAuth 콜백 처리 실패: ${utf8.decode(response.bodyBytes)}');
+    }
+  }
+
+  /**
    * 개발용 간편 로그인
    */
   Future<Map<String, dynamic>> devLogin(String email, String nickname) async {
@@ -113,6 +164,24 @@ class ApiService {
       return Map<String, dynamic>.from(_decodeUtf8Response(response));
     } else {
       throw Exception('사용자 정보 수정 실패: ${utf8.decode(response.bodyBytes)}');
+    }
+  }
+
+  /// 특정 사용자 정보 조회 (공개 프로필)
+  /// 탈퇴한 사용자의 경우 nickname이 "탈퇴한 사용자"로 반환됨
+  Future<Map<String, dynamic>> getUser(int userId) async {
+    final response = await http.get(
+      Uri.parse('$userApiBaseUrl/api/users/$userId'),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(_decodeUtf8Response(response));
+    } else if (response.statusCode == 404) {
+      // 존재하지 않는 사용자
+      throw Exception('존재하지 않는 사용자입니다.');
+    } else {
+      throw Exception('사용자 정보 조회 실패: ${utf8.decode(response.bodyBytes)}');
     }
   }
 

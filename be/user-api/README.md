@@ -43,23 +43,43 @@ export JWT_SECRET=your-jwt-secret-key
 
 ### 2. 애플리케이션 실행
 
+#### 방법 1: 실행 스크립트 사용 (권장)
 ```bash
-# 프로젝트 디렉토리로 이동
+# macOS/Linux
+cd be/user-api
+./run.sh
+
+# Windows
+cd be/user-api
+run.bat
+```
+
+실행 스크립트는 `.env` 파일의 환경 변수를 자동으로 로드합니다.
+
+#### 방법 2: 환경 변수 직접 설정
+```bash
 cd be/user-api
 
-# 기본 포트(8080)로 실행
+# macOS/Linux - .env 파일 로드
+export $(cat .env | grep -v '^#' | xargs)
 ./gradlew bootRun
 
-# 또는 포트를 변경하여 실행
-PORT=8081 ./gradlew bootRun
-
-# 또는 JAR 파일 빌드 후 실행
-./gradlew build
-java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
-
-# JAR 실행 시 포트 변경
-PORT=8081 java -jar build/libs/user-api-0.0.1-SNAPSHOT.jar
+# Windows PowerShell
+Get-Content .env | ForEach-Object {
+    if ($_ -match '^([^#].+?)=(.+)$') {
+        [Environment]::SetEnvironmentVariable($matches[1], $matches[2])
+    }
+}
+.\gradlew.bat bootRun
 ```
+
+#### 방법 3: application-local.yml 사용
+`src/main/resources/application-local.yml` 파일에 직접 값을 입력하고:
+```bash
+./gradlew bootRun
+```
+
+**참고**: `application-local.yml`은 `.gitignore`에 포함되어 Git에 커밋되지 않습니다.
 
 **포트 설정**:
 - 기본 포트: 8080
@@ -178,14 +198,54 @@ curl -X GET http://localhost:8080/api/users/me \
 ### Google OAuth2 설정
 
 1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트 생성
-2. OAuth 2.0 클라이언트 ID 생성
-3. 승인된 리디렉션 URI 추가: `http://localhost:8080/login/oauth2/code/google`
+2. "API 및 서비스" > "사용자 인증 정보"로 이동
+3. "사용자 인증 정보 만들기" > "OAuth 2.0 클라이언트 ID" 선택
+4. 애플리케이션 유형: "웹 애플리케이션" 선택
+5. 승인된 리디렉션 URI 추가:
+   - `http://localhost:8080/login/oauth2/code/google`
+   - 프로덕션: `https://your-domain.com/login/oauth2/code/google`
+6. 생성된 클라이언트 ID와 클라이언트 보안 비밀을 `.env` 파일에 설정:
+   ```bash
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   ```
 
 ### Naver OAuth2 설정
 
 1. [네이버 개발자 센터](https://developers.naver.com/)에서 애플리케이션 등록
-2. 서비스 URL: `http://localhost:8080`
-3. Callback URL: `http://localhost:8080/login/oauth2/code/naver`
+2. "Application > 애플리케이션 등록" 선택
+3. 사용 API: "네이버 로그인" 선택
+4. 제공 정보: "이메일", "닉네임" 필수 선택
+5. 서비스 URL: `http://localhost:8080`
+6. Callback URL: `http://localhost:8080/login/oauth2/code/naver`
+   - 프로덕션: `https://your-domain.com/login/oauth2/code/naver`
+7. 생성된 Client ID와 Client Secret을 `.env` 파일에 설정:
+   ```bash
+   NAVER_CLIENT_ID=your-naver-client-id
+   NAVER_CLIENT_SECRET=your-naver-client-secret
+   ```
+
+### .env 파일 설정
+
+프로젝트 루트에 `.env` 파일을 생성하고 다음 내용을 추가하세요:
+
+```bash
+# JWT 설정 (Catalog API와 동일하게 설정)
+JWT_SECRET=mySecretKey1234567890123456789012345678901234567890
+
+# Google OAuth2 설정
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Naver OAuth2 설정
+NAVER_CLIENT_ID=your-naver-client-id
+NAVER_CLIENT_SECRET=your-naver-client-secret
+
+# 서버 포트
+PORT=8080
+```
+
+**중요**: `.env` 파일은 `.gitignore`에 포함되어 있으므로 Git에 커밋되지 않습니다.
 
 ## 개발 참고사항
 

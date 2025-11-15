@@ -27,6 +27,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux' // REST API OAuth2용
     
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
@@ -48,4 +49,18 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// .env 파일 로드
+bootRun {
+    def envFile = file('.env')
+    if (envFile.exists()) {
+        envFile.readLines().each { line ->
+            if (line && !line.startsWith('#') && line.contains('=')) {
+                def (key, value) = line.split('=', 2)
+                systemProperty key.trim(), value.trim()
+                environment key.trim(), value.trim()
+            }
+        }
+    }
 }

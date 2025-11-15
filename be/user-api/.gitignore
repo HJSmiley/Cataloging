@@ -1,27 +1,11 @@
-# Gradle
-.gradle/
+HELP.md
+.gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-# Gradle Wrapper
-gradle-app.setting
-!gradle-wrapper.properties
-
-# IDE
-.idea/
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-# VS Code
-.vscode/
-
-# Eclipse
+### STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -33,56 +17,31 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
-# NetBeans
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
 
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+### VS Code ###
+.vscode/
 
-# Logs
-*.log
-logs/
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Application specific
-application-local.yml
-application-local.properties
-*.env
+### Environment ###
 .env
+application-local.yml
 
-# H2 Database files
+### Database ###
 data/
+*.db
 *.mv.db
 *.trace.db
-*.lock.db
-
-# Temporary files
-*.tmp
-*.temp
-*.swp
-*.swo
-*~
-
-# Package Files
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar

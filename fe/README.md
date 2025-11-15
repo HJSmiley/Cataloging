@@ -41,7 +41,11 @@ This is a Flutter application for the Catalog app, which integrates with back-en
    flutter pub get
    ```
 
-4. Run the application:
+4. Configure OAuth Login:
+   - **Google Login**: Native SDK (configured in `ios/Runner/Info.plist`)
+   - **Naver Login**: WebView OAuth2
+
+5. Run the application:
    ```
    flutter run
    ```
